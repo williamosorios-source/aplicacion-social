@@ -6,6 +6,13 @@ const fetch = require('node-fetch');
 const app = express();
 app.use(cors());
 app.use(express.json());
+app.use(express.text());
+app.use((req, res, next) => {
+  if (typeof req.body === 'string' && req.body.trim()) {
+    try { req.body = JSON.parse(req.body); } catch (_) {}
+  }
+  next();
+});
 
 const SPREADSHEET_ID = process.env.SPREADSHEET_ID || "1xY6EgKQWwHhPcmugG8kQQsPET2D5dIzAd7LZF6aU_ko";
 const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "985f9dc0-c0d9-445c-b600-75e99180a9fd";
