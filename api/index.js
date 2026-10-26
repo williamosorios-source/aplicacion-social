@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
-const { google } = require('@googleapis/sheets');
+const { sheets } = require('@googleapis/sheets');
+const { GoogleAuth } = require('google-auth-library');
 const fetch = require('node-fetch');
 
 const app = express();
@@ -27,10 +28,10 @@ function getSheetsClient() {
     throw new Error("Faltan las variables de entorno GOOGLE_CLIENT_EMAIL o GOOGLE_PRIVATE_KEY en Vercel.");
   }
 
-  // Corregir los saltos de línea escapados en Vercel
+  // Corregir los saltos de línea escapados en la variable de Vercel
   privateKey = privateKey.replace(/\\n/g, '\n');
 
-  const auth = new google.auth.GoogleAuth({
+  const auth = new GoogleAuth({
     credentials: {
       client_email: clientEmail,
       private_key: privateKey,
@@ -38,7 +39,7 @@ function getSheetsClient() {
     scopes: ['https://www.googleapis.com/auth/spreadsheets'],
   });
 
-  return google.sheets({ version: 'v4', auth });
+  return sheets({ version: 'v4', auth });
 }
 
 function seedRandom(seed) {
@@ -63,8 +64,8 @@ function getFormattedNow() {
 }
 
 async function computeParticipants_() {
-  const sheets = getSheetsClient();
-  const res = await sheets.spreadsheets.values.get({
+  const sheetsClient = getSheetsClient();
+  const res = await sheetsClient.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: 'PARTICIPANTES!A2:H',
   });
@@ -143,7 +144,7 @@ async function computeParticipants_() {
   });
 
   if (changed) {
-    await sheets.spreadsheets.values.update({
+    await sheetsClient.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
       range: `PARTICIPANTES!G2:G${rows.length + 1}`,
       valueInputOption: 'USER_ENTERED',
@@ -159,8 +160,8 @@ async function getParticipants() {
 }
 
 async function readLogs_() {
-  const sheets = getSheetsClient();
-  const res = await sheets.spreadsheets.values.get({
+  const sheetsClient = getSheetsClient();
+  const res = await sheetsClient.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: 'REGISTROS!A2:D',
   });
@@ -190,8 +191,8 @@ async function getLogs() {
 }
 
 async function updateConfirmedDancesFast_(specificIds) {
-  const sheets = getSheetsClient();
-  const resPart = await sheets.spreadsheets.values.get({
+  const sheetsClient = getSheetsClient();
+  const resPart = await sheetsClient.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: 'PARTICIPANTES!A2:H',
   });
@@ -242,7 +243,7 @@ async function updateConfirmedDancesFast_(specificIds) {
   }
 
   if (needsUpdate) {
-    await sheets.spreadsheets.values.update({
+    await sheetsClient.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
       range: `PARTICIPANTES!H2:H${partRows.length + 1}`,
       valueInputOption: 'USER_ENTERED',
@@ -282,7 +283,7 @@ async function sendPushNotification(receiverId, senderName, senderId, userMessag
 }
 
 async function registerDance(idEmisor, idReceptor, mensaje) {
-  const sheets = getSheetsClient();
+  const sheetsClient = getSheetsClient();
   const logs = await readLogs_();
   const emisorStr = String(idEmisor).trim();
   const receptorStr = String(idReceptor).trim();
@@ -294,7 +295,7 @@ async function registerDance(idEmisor, idReceptor, mensaje) {
 
   const now = getFormattedNow();
   
-  await sheets.spreadsheets.values.append({
+  await sheetsClient.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
     range: 'REGISTROS!A:D',
     valueInputOption: 'USER_ENTERED',
@@ -319,8 +320,8 @@ async function registerDance(idEmisor, idReceptor, mensaje) {
 }
 
 async function readPollOptions_() {
-  const sheets = getSheetsClient();
-  const resO1 = await sheets.spreadsheets.values.get({
+  const sheetsClient = getSheetsClient();
+  const resO1 = await sheetsClient.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: 'ENCUESTA!O1',
   });
@@ -330,7 +331,7 @@ async function readPollOptions_() {
     return [];
   }
 
-  const resData = await sheets.spreadsheets.values.get({
+  const resData = await sheetsClient.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: 'ENCUESTA!A2:B',
   });
@@ -349,8 +350,8 @@ async function readPollOptions_() {
 }
 
 async function readVotes_() {
-  const sheets = getSheetsClient();
-  const res = await sheets.spreadsheets.values.get({
+  const sheetsClient = getSheetsClient();
+  const res = await sheetsClient.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: 'VOTOS!A2:C',
   });
@@ -406,9 +407,9 @@ async function submitVote(userId, song) {
   }
 
   const now = getFormattedNow();
-  const sheets = getSheetsClient();
+  const sheetsClient = getSheetsClient();
 
-  await sheets.spreadsheets.values.append({
+  await sheetsClient.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
     range: 'VOTOS!A:C',
     valueInputOption: 'USER_ENTERED',
