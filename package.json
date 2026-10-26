@@ -1,0 +1,15 @@
+{
+  "name": "desparche-app",
+  "version": "1.0.0",
+  "description": "Backend API y Frontend de Social Pal Desparche",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node api/index.js"
+  },
+  "dependencies": {
+    "@googleapis/sheets": "^9.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0"
+  }
+}
