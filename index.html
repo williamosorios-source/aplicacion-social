@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="dns-prefetch" href="https://cdn.onesignal.com">
 
-  <!-- ARRANQUE TEMPRANO Y CLIENTE API -->
+  <!-- CLIENTE API -->
   <script>
     const API_URL = "/api";
     const READ_ONLY_ACTIONS = ['getParticipants', 'getLogs', 'getPollData', 'getChallengeData'];
@@ -155,28 +155,6 @@
 </head>
 <body class="text-slate-800 min-h-screen min-h-[100svh] flex flex-col items-center justify-between p-4 pb-28 antialiased selection:bg-purple-500 selection:text-white">
 
-  <!-- SVG LOGO TEMPLATE ORIGINAL -->
-  <template id="appLogo">
-    <svg class="w-full max-w-[220px] h-auto mx-auto" viewBox="0 0 400 350" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#3B0764" />
-          <stop offset="50%" stop-color="#9333EA" />
-          <stop offset="100%" stop-color="#F43F5E" />
-        </linearGradient>
-      </defs>
-      <path d="M190 60 C190 60 210 90 190 120 C180 135 160 145 160 170 C160 190 180 200 180 200 C180 200 140 190 145 150 C150 120 175 100 170 80 Z" fill="url(#logoGrad)"/>
-      <path d="M210 65 C220 75 235 90 235 110 C235 130 205 150 205 170 C205 190 235 200 235 200 C235 200 185 185 190 145 C195 115 220 100 210 65 Z" fill="url(#logoGrad)"/>
-      <circle cx="215" cy="50" r="12" fill="url(#logoGrad)"/>
-      <circle cx="185" cy="55" r="10" fill="url(#logoGrad)"/>
-      <polygon points="120,150 140,160 125,175" fill="url(#logoGrad)"/>
-      <polygon points="250,130 265,145 245,155" fill="url(#logoGrad)"/>
-      <text x="200" y="240" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="34" fill="#3B0764">SOCIAL PAL</text>
-      <text x="200" y="278" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="36" fill="url(#logoGrad)">DESPARCHE</text>
-      <text x="200" y="308" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="600" font-style="italic" font-size="16" fill="#E11D48">¡Partitura Navideña! 🎄</text>
-    </svg>
-  </template>
-
   <!-- MODAL DE AVISO -->
   <div id="customModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 hidden z-50">
     <div class="card-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border-t-4 border-t-purple-600">
@@ -190,9 +168,16 @@
 
   <!-- PANTALLA LOGIN -->
   <div id="loginSection" class="w-full max-w-sm card-white p-6 sm:p-8 rounded-3xl shadow-xl my-auto text-center border border-purple-100 shrink-0">
-    <div id="logoContainerLogin" class="mb-4"></div>
+    
+    <!-- Imagen de Portada en lugar del SVG y título previo -->
+    <div class="mb-6 flex justify-center">
+      <img src="portada.png" 
+           alt="Portada Social Pa'l Desparche" 
+           class="w-full max-w-[280px] h-auto object-contain rounded-2xl shadow-sm border border-slate-100"
+           onerror="this.onerror=null; this.src='portada.jpg';">
+    </div>
 
-    <div class="space-y-4 text-left mt-6">
+    <div class="space-y-4 text-left">
       <div>
         <label class="block text-[11px] font-bold text-purple-950 mb-1.5 uppercase tracking-wider">Número de Cédula</label>
         <input id="cedulaInput" type="number" pattern="[0-9]*" inputmode="numeric" placeholder="Ej. 12345678" class="w-full px-4 py-3.5 rounded-2xl input-light font-semibold outline-none transition">
@@ -208,7 +193,7 @@
     </div>
   </div>
 
-  <!-- CONTENEDOR PRINCIPAL CON PESTAÑAS -->
+  <!-- CONTENEDOR PRINCIPAL -->
   <div id="mainSection" class="w-full max-w-md hidden space-y-4 my-auto py-2 shrink-0">
 
     <!-- PESTAÑA 1: RETO BAILE Y EL MISTERIO NAVIDEÑO -->
@@ -278,22 +263,22 @@
         </div>
       </div>
 
-   <!-- SECCIÓN EL MISTERIO DE LA PARTITURA NAVIDEÑA (GRINCH A LA MITAD Y TÍTULO CENTRADO) -->
+      <!-- SECCIÓN EL MISTERIO DE LA PARTITURA NAVIDEÑA -->
       <div class="card-white p-6 rounded-3xl shadow-xl border border-purple-100 space-y-4 relative overflow-visible">
         
-        <!-- Imagen del Grinch subida a la mitad (-top-20) sobresaliendo del marco -->
+        <!-- Imagen del Grinch sobreelevada -->
         <img src="grinch.png" 
              alt="El Grinch Navideño" 
              class="absolute -top-20 -right-4 w-44 sm:w-56 h-auto opacity-95 drop-shadow-2xl pointer-events-none z-20 hover:scale-105 transition-transform">
 
-        <!-- Cabecera con el título perfectamente centrado -->
+        <!-- Cabecera con el título centrado -->
         <div class="text-center pb-2 border-b border-purple-100 w-full">
           <span class="text-2xl">🎼</span>
           <h3 class="font-black text-sm text-purple-950 uppercase tracking-wider mt-1">El Misterio de la Partitura Navideña</h3>
           <p class="text-[11px] text-slate-500 mt-0.5">Recupera los 4 fragmentos congelados para salvar el Social.</p>
         </div>
 
-        <!-- TARJETA GRAN GANADOR (DESPLEGABLE AL COMPLETAR TODO) -->
+        <!-- TARJETA GRAN GANADOR -->
         <div id="grandWinnerCard" class="hidden gold-gradient-card p-6 rounded-3xl text-center space-y-3">
           <span class="text-4xl">🏆🎁</span>
           <h2 class="text-lg font-black text-amber-950 uppercase tracking-tight">¡Salvaste el Social Navideño!</h2>
@@ -373,9 +358,6 @@
     let pollLoading = false;
 
     document.addEventListener('DOMContentLoaded', function() {
-      const logoTpl = document.getElementById('appLogo').content.cloneNode(true);
-      document.getElementById('logoContainerLogin').appendChild(logoTpl);
-
       const savedCedula = localStorage.getItem('desparche_cedula');
       if (savedCedula) {
         document.getElementById('cedulaInput').value = savedCedula;
@@ -509,7 +491,7 @@
           }
         }
 
-        // Renderizar Lista de Parejas Objetivos
+        // Parejas Objetivos
         const assignedIds = currentUser.assignedTargets || [];
         let targetMatchedCount = 0;
 
@@ -551,19 +533,21 @@
 
         document.getElementById('targetMatchedCount').innerText = `${targetMatchedCount} / ${assignedIds.length}`;
 
-        // Renderizar Tarjeta de Gran Ganador si aplica
+        // Gran Ganador
         const grandWinnerEl = document.getElementById('grandWinnerCard');
-        if (challengeData.showGrandWinner) {
+        if (challengeData && challengeData.showGrandWinner) {
           grandWinnerEl.classList.remove('hidden');
           document.getElementById('grandWinnerCode').innerText = challengeData.codigoSorpresa || "¡GANADOR!";
         } else {
           grandWinnerEl.classList.add('hidden');
         }
 
-        // Renderizar las 4 Tarjetas de Pistas Navideñas
-        renderPistas(challengeData.tarjetas);
+        // Pistas
+        if (challengeData && challengeData.tarjetas) {
+          renderPistas(challengeData.tarjetas);
+        }
 
-        // Lista de Bailes Registrados
+        // Bailes Registrados
         const myDancesListEl = document.getElementById('myDancesList');
         if (myDances.length === 0) {
           myDancesListEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-2 font-medium">Aún no has registrado bailes.</p>';
@@ -590,7 +574,7 @@
           }).reverse().join('');
         }
 
-        // Banderas / Mensajes Recibidos
+        // Mensajes
         const badgeListEl = document.getElementById('badgeList');
         if (receivedBadges.length === 0) {
           badgeListEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-2 font-medium">Sin mensajes aún.</p>';
@@ -616,7 +600,7 @@
       });
     }
 
-   function renderPistas(tarjetas) {
+    function renderPistas(tarjetas) {
       const container = document.getElementById('pistasContainer');
       if (!tarjetas || tarjetas.length === 0) {
         container.innerHTML = '<p class="text-slate-400 text-xs text-center py-2 font-medium">No se encontraron pistas.</p>';
@@ -770,11 +754,6 @@
       container.innerHTML = '<p class="text-slate-400 text-xs text-center py-4 font-medium">Cargando encuesta...</p>';
 
       api('getPollData', currentUser.id).then(function(data) {
-        if (data && data.disabled) {
-          container.innerHTML = '<div class="bg-amber-50 border border-amber-200 p-4 rounded-2xl text-center"><p class="text-xs font-bold text-amber-800">🔒 La encuesta está cerrada o deshabilitada en este momento.</p></div>';
-          return;
-        }
-
         if (!data || !data.options || !Array.isArray(data.options) || data.options.length === 0) {
           container.innerHTML = '<p class="text-slate-400 text-xs text-center py-4 font-medium">No hay canciones disponibles en este momento.</p>';
           return;
@@ -794,15 +773,8 @@
           `;
 
           data.options.forEach(optObj => {
-            let songName = "";
-            let imageUrl = "";
-
-            if (typeof optObj === 'string') {
-              songName = optObj;
-            } else if (optObj && typeof optObj === 'object') {
-              songName = optObj.song || optObj.nombre || optObj.titulo || "";
-              imageUrl = optObj.imageUrl || optObj.imagen || optObj.url || "";
-            }
+            let songName = typeof optObj === 'string' ? optObj : (optObj.song || "");
+            let imageUrl = typeof optObj === 'object' ? (optObj.imageUrl || "") : "";
 
             if (!songName) return;
 
@@ -833,15 +805,8 @@
           `;
 
           data.options.forEach(optObj => {
-            let songName = "";
-            let imageUrl = "";
-
-            if (typeof optObj === 'string') {
-              songName = optObj;
-            } else if (optObj && typeof optObj === 'object') {
-              songName = optObj.song || optObj.nombre || optObj.titulo || "";
-              imageUrl = optObj.imageUrl || optObj.imagen || optObj.url || "";
-            }
+            let songName = typeof optObj === 'string' ? optObj : (optObj.song || "");
+            let imageUrl = typeof optObj === 'object' ? (optObj.imageUrl || "") : "";
 
             if (!songName) return;
 
