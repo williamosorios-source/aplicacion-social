@@ -616,7 +616,7 @@
       });
     }
 
-    function renderPistas(tarjetas) {
+   function renderPistas(tarjetas) {
       const container = document.getElementById('pistasContainer');
       if (!tarjetas || tarjetas.length === 0) {
         container.innerHTML = '<p class="text-slate-400 text-xs text-center py-2 font-medium">No se encontraron pistas.</p>';
@@ -643,27 +643,14 @@
         if (t.completed) {
           inputBlock = `<div class="bg-emerald-100/70 text-emerald-900 text-xs font-bold p-3 rounded-xl text-center">✨ ¡Has descifrado este fragmento de la partitura!</div>`;
         } else if (t.unlocked) {
-          let btnText = "Enviar Respuesta 🧩";
-          let placeholder = "Ingresa la solución encontrada";
-
-          if (t.pistaNumero === 2) {
-            if (t.tipoValidacion === 'STAFF_ANFITRION' || t.retoId === 1) {
-              btnText = "Validar Código del Anfitrión ⚡";
-              placeholder = "Código provisto por el Anfitrión";
-            } else {
-              btnText = "Validar Código del DJ 🎧";
-              placeholder = "Código provisto por el DJ";
-            }
-          }
-
           inputBlock = `
             <div class="space-y-2.5 mt-3 pt-3 border-t border-slate-100">
               <p class="text-[11px] font-extrabold text-purple-950">📍 Ubicación: <span class="text-purple-700 font-bold">${escapeHtml(t.ubicacion)}</span></p>
               <p class="text-xs text-slate-600 font-medium bg-purple-50/50 p-2.5 rounded-xl border border-purple-100">⚡ <b>Prueba:</b> ${escapeHtml(t.actividad)}</p>
               <div class="flex gap-2">
-                <input id="pistaInput_${t.pistaNumero}" type="text" placeholder="${placeholder}" class="w-full px-3.5 py-2.5 rounded-xl input-light text-xs font-semibold outline-none transition uppercase">
+                <input id="pistaInput_${t.pistaNumero}" type="text" placeholder="Ingresa la solución encontrada" class="w-full px-3.5 py-2.5 rounded-xl input-light text-xs font-semibold outline-none transition uppercase">
                 <button onclick="submitPista(${t.pistaNumero})" class="brand-gradient-btn text-white text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 active:scale-95 shadow">
-                  ${btnText}
+                  Enviar Respuesta 🧩
                 </button>
               </div>
             </div>
