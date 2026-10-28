@@ -2,17 +2,17 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Social Pal Desparche 💃🕺</title>
+  <title>Social Pa'l Desparche 🎄 - El Misterio de la Partitura Navideña</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="dns-prefetch" href="https://cdn.onesignal.com">
 
-  <!-- ARRANQUE TEMPRANO -->
+  <!-- ARRANQUE TEMPRANO Y CLIENTE API -->
   <script>
     const API_URL = "/api";
-    const READ_ONLY_ACTIONS = ['getParticipants', 'getLogs', 'getPollData'];
+    const READ_ONLY_ACTIONS = ['getParticipants', 'getLogs', 'getPollData', 'getChallengeData'];
 
     async function api(action, ...args) {
       const attempts = READ_ONLY_ACTIONS.includes(action) ? 2 : 1;
@@ -95,8 +95,8 @@
     }
     body {
       font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: #f8fafc;
-      background-image: radial-gradient(#e2e8f0 1px, transparent 1px);
+      background-color: #0f172a;
+      background-image: radial-gradient(#334155 1px, transparent 1px);
       background-size: 24px 24px;
       -webkit-tap-highlight-color: transparent;
       overflow-x: hidden;
@@ -111,35 +111,41 @@
 
     .card-white {
       background: #ffffff;
-      border: 1px solid #f1f5f9;
-      box-shadow: 0 10px 30px -5px rgba(76, 29, 149, 0.08);
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.15);
       box-sizing: border-box;
       width: 100%;
     }
 
     .brand-gradient-btn {
-      background: linear-gradient(135deg, #4c1d95 0%, #7e22ce 50%, #e11d48 100%);
+      background: linear-gradient(135deg, #991b1b 0%, #dc2626 50%, #15803d 100%);
       transition: all 0.25s ease;
     }
     .brand-gradient-btn:hover {
       opacity: 0.95;
       transform: translateY(-1px);
-      box-shadow: 0 10px 20px -5px rgba(126, 34, 206, 0.4);
+      box-shadow: 0 10px 20px -5px rgba(220, 38, 38, 0.4);
+    }
+
+    .gold-gradient-card {
+      background: linear-gradient(135deg, #fef08a 0%, #fde047 50%, #eab308 100%);
+      border: 2px solid #ca8a04;
+      box-shadow: 0 15px 35px -5px rgba(234, 179, 8, 0.4);
     }
 
     .input-light {
       background: #f8fafc;
       border: 1.5px solid #e2e8f0;
-      color: #3b0764;
+      color: #0f172a;
       -webkit-appearance: none;
       appearance: none;
       border-radius: 1rem;
       font-size: 16px !important;
     }
     .input-light:focus {
-      border-color: #7e22ce;
+      border-color: #dc2626;
       background: #ffffff;
-      box-shadow: 0 0 0 4px rgba(126, 34, 206, 0.1);
+      box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.1);
     }
 
     .pb-safe { 
@@ -147,34 +153,32 @@
     }
   </style>
 </head>
-<body class="text-slate-800 min-h-screen min-h-[100svh] flex flex-col items-center justify-between p-4 pb-28 antialiased selection:bg-purple-500 selection:text-white">
+<body class="text-slate-800 min-h-screen min-h-[100svh] flex flex-col items-center justify-between p-4 pb-28 antialiased selection:bg-rose-600 selection:text-white">
 
-  <!-- SVG LOGO TEMPLATE -->
+  <!-- SVG LOGO TEMPLATE - EDICIÓN NAVIDEÑA -->
   <template id="appLogo">
     <svg class="w-full max-w-[220px] h-auto mx-auto" viewBox="0 0 400 350" fill="none" xmlns="http://www.w3.org/2000/svg">
       <defs>
         <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="#3B0764" />
-          <stop offset="50%" stop-color="#9333EA" />
-          <stop offset="100%" stop-color="#F43F5E" />
+          <stop offset="0%" stop-color="#15803D" />
+          <stop offset="50%" stop-color="#DC2626" />
+          <stop offset="100%" stop-color="#991B1B" />
         </linearGradient>
       </defs>
       <path d="M190 60 C190 60 210 90 190 120 C180 135 160 145 160 170 C160 190 180 200 180 200 C180 200 140 190 145 150 C150 120 175 100 170 80 Z" fill="url(#logoGrad)"/>
       <path d="M210 65 C220 75 235 90 235 110 C235 130 205 150 205 170 C205 190 235 200 235 200 C235 200 185 185 190 145 C195 115 220 100 210 65 Z" fill="url(#logoGrad)"/>
       <circle cx="215" cy="50" r="12" fill="url(#logoGrad)"/>
       <circle cx="185" cy="55" r="10" fill="url(#logoGrad)"/>
-      <polygon points="120,150 140,160 125,175" fill="url(#logoGrad)"/>
-      <polygon points="250,130 265,145 245,155" fill="url(#logoGrad)"/>
-      <text x="200" y="240" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="34" fill="#3B0764">SOCIAL PAL</text>
-      <text x="200" y="278" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="36" fill="url(#logoGrad)">DESPARCHE</text>
-      <text x="200" y="308" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="600" font-style="italic" font-size="16" fill="#E11D48">¡Reto 5 Bailes!</text>
+      <text x="200" y="240" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="32" fill="#15803D">SOCIAL PA'L</text>
+      <text x="200" y="278" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="800" font-size="34" fill="url(#logoGrad)">DESPARCHE</text>
+      <text x="200" y="308" text-anchor="middle" font-family="'Plus Jakarta Sans', sans-serif" font-weight="700" font-style="italic" font-size="14" fill="#DC2626">🎄 Partitura Navideña 🎄</text>
     </svg>
   </template>
 
   <!-- MODAL DE AVISO -->
-  <div id="customModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 hidden z-50">
-    <div class="card-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border-t-4 border-t-purple-600">
-      <h3 id="modalTitle" class="text-lg font-extrabold text-purple-950 mb-1">Aviso</h3>
+  <div id="customModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-md flex items-center justify-center p-4 hidden z-50">
+    <div class="card-white rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl border-t-4 border-t-rose-600">
+      <h3 id="modalTitle" class="text-lg font-extrabold text-slate-900 mb-1">Aviso</h3>
       <p id="modalMessage" class="text-xs text-slate-600 mb-6 leading-relaxed"></p>
       <button onclick="closeModal()" class="w-full brand-gradient-btn text-white font-bold py-3.5 rounded-2xl text-xs active:scale-95 shadow-md">
         Entendido
@@ -183,17 +187,17 @@
   </div>
 
   <!-- PANTALLA LOGIN -->
-  <div id="loginSection" class="w-full max-w-sm card-white p-6 sm:p-8 rounded-3xl shadow-xl my-auto text-center border border-purple-100 shrink-0">
+  <div id="loginSection" class="w-full max-w-sm card-white p-6 sm:p-8 rounded-3xl shadow-xl my-auto text-center border border-slate-200 shrink-0">
     <div id="logoContainerLogin" class="mb-4"></div>
 
     <div class="space-y-4 text-left mt-6">
       <div>
-        <label class="block text-[11px] font-bold text-purple-950 mb-1.5 uppercase tracking-wider">Número de Cédula</label>
+        <label class="block text-[11px] font-bold text-slate-800 mb-1.5 uppercase tracking-wider">Número de Cédula</label>
         <input id="cedulaInput" type="number" pattern="[0-9]*" inputmode="numeric" placeholder="Ej. 12345678" class="w-full px-4 py-3.5 rounded-2xl input-light font-semibold outline-none transition">
       </div>
 
-      <button id="btnLogin" onclick="login()" class="w-full brand-gradient-btn text-white font-extrabold py-4 rounded-2xl text-sm transition active:scale-95 shadow-lg shadow-purple-500/25">
-        Ingresar al Reto 💃🕺
+      <button id="btnLogin" onclick="login()" class="w-full brand-gradient-btn text-white font-extrabold py-4 rounded-2xl text-sm transition active:scale-95 shadow-lg shadow-rose-600/25">
+        Ingresar al Social Navideño 🎄💃
       </button>
 
       <div id="loginError" class="text-rose-600 text-xs text-center mt-3 hidden bg-rose-50 p-3 rounded-xl border border-rose-200 font-medium">
@@ -205,29 +209,29 @@
   <!-- CONTENEDOR PRINCIPAL CON PESTAÑAS -->
   <div id="mainSection" class="w-full max-w-md hidden space-y-4 my-auto py-2 shrink-0">
 
-    <!-- PESTAÑA 1: RETO BAILE -->
+    <!-- PESTAÑA 1: RETO BAILE Y EL MISTERIO NAVIDEÑO -->
     <div id="tabDanceContent" class="space-y-4">
 
-      <div class="card-white p-6 rounded-3xl shadow-xl relative border border-purple-100">
+      <div class="card-white p-6 rounded-3xl shadow-xl relative border border-slate-200">
         <div class="flex justify-between items-center mb-4">
           <div>
-            <p class="text-[10px] font-bold text-purple-900/60 uppercase tracking-widest">Bailarín Activo</p>
-            <h2 id="userName" class="text-lg font-black text-purple-950">---</h2>
+            <p class="text-[10px] font-bold text-emerald-700 uppercase tracking-widest">Bailarín Activo</p>
+            <h2 id="userName" class="text-lg font-black text-slate-900">---</h2>
           </div>
           <button onclick="logout()" class="text-xs bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 hover:border-rose-200 px-3.5 py-2 rounded-xl transition font-bold">
             Salir
           </button>
         </div>
 
-        <div class="bg-gradient-to-br from-purple-950 via-purple-900 to-slate-900 rounded-2xl p-3.5 text-center mb-4 shadow-md text-white">
-          <p class="text-[10px] text-purple-300 font-bold uppercase tracking-widest mb-0.5">Tu ID es</p>
-          <span id="userId" class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-200 via-pink-300 to-rose-300 tracking-tight">--</span>
+        <div class="bg-gradient-to-br from-slate-900 via-rose-950 to-emerald-950 rounded-2xl p-3.5 text-center mb-4 shadow-md text-white border border-rose-900/50">
+          <p class="text-[10px] text-rose-300 font-bold uppercase tracking-widest mb-0.5">Tu ID es</p>
+          <span id="userId" class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-rose-300 to-emerald-300 tracking-tight">--</span>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
-          <div class="bg-purple-50 p-3.5 rounded-2xl border border-purple-100 text-center">
+          <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 text-center">
             <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Total Bailes</p>
-            <div class="text-2xl font-black text-purple-800" id="totalDancedCount">0</div>
+            <div class="text-2xl font-black text-slate-800" id="totalDancedCount">0</div>
           </div>
           <div class="bg-rose-50 p-3.5 rounded-2xl border border-rose-100 text-center">
             <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Progreso 5 Objetivos</p>
@@ -236,10 +240,11 @@
         </div>
       </div>
 
-      <div class="card-white p-6 rounded-3xl shadow-xl space-y-4 border border-purple-100">
+      <!-- REGISTRAR BAILE -->
+      <div class="card-white p-6 rounded-3xl shadow-xl space-y-4 border border-slate-200">
         <div class="flex items-center gap-2">
           <span class="text-lg">✨</span>
-          <h3 class="font-extrabold text-xs text-purple-950 uppercase tracking-wider">Registrar Baile</h3>
+          <h3 class="font-extrabold text-xs text-slate-900 uppercase tracking-wider">Registrar Baile</h3>
         </div>
 
         <div>
@@ -260,43 +265,56 @@
         <button id="btnSave" onclick="registerDance()" class="w-full brand-gradient-btn text-white font-extrabold py-3.5 rounded-2xl text-sm transition active:scale-95 shadow-md">
           Guardar Baile 💃🕺
         </button>
-        <div id="saveStatus" class="text-xs text-center font-bold text-purple-700"></div>
+        <div id="saveStatus" class="text-xs text-center font-bold text-rose-700"></div>
       </div>
 
-      <div class="card-white p-5 rounded-3xl shadow-xl border border-purple-100">
-        <h3 class="font-extrabold text-xs text-purple-950 uppercase tracking-wider mb-3 text-center sm:text-left">🎯 Tus 5 Parejas Objetivo (ID)</h3>
+      <!-- PAREJAS OBJETIVO -->
+      <div class="card-white p-5 rounded-3xl shadow-xl border border-slate-200">
+        <h3 class="font-extrabold text-xs text-slate-900 uppercase tracking-wider mb-3 text-center sm:text-left">🎯 Tus 5 Parejas Objetivo (ID)</h3>
         <div id="assignedList" class="grid grid-cols-5 gap-2">
           <p class="text-slate-400 text-xs text-center py-2 font-medium col-span-5">Cargando asignaciones...</p>
         </div>
       </div>
 
-      <div class="card-white p-6 rounded-3xl shadow-xl border border-purple-100 text-center relative overflow-hidden">
-        <div class="flex items-center justify-center gap-2 mb-2">
-          <span class="text-lg">🎁</span>
-          <h3 class="font-extrabold text-xs text-purple-950 uppercase tracking-wider">Tu Código Sorpresa</h3>
-        </div>
-        <p class="text-[11px] text-slate-500 mb-4">Completa el baile verificado con tus 5 parejas objetivo para desbloquear tu premio.</p>
-
-        <div id="secretCodeContainer" class="bg-slate-100 p-4 rounded-2xl border border-slate-200">
-          <span id="secretCodeText" class="text-slate-400 font-bold text-sm tracking-widest">🔒 CÓDIGO BLOQUEADO</span>
+      <!-- SECCIÓN EL MISTERIO DE LA PARTITURA NAVIDEÑA (4 TARJETAS) -->
+      <div class="card-white p-6 rounded-3xl shadow-xl border border-slate-200 space-y-4">
+        <div class="text-center pb-2 border-b border-slate-100">
+          <span class="text-2xl">🎼</span>
+          <h3 class="font-black text-sm text-slate-900 uppercase tracking-wider mt-1">El Misterio de la Partitura Navideña</h3>
+          <p class="text-[11px] text-slate-500 mt-0.5">Recupera los 4 fragmentos congelados para salvar el Social.</p>
         </div>
 
-        <button id="btnRevealCode" onclick="revealCode()" disabled class="w-full mt-3 bg-slate-200 text-slate-400 font-extrabold py-3 rounded-2xl text-xs transition cursor-not-allowed">
-          🔒 Bloqueado (Faltan Parejas)
-        </button>
+        <!-- TARJETA GRAN GANADOR (DESPLEGABLE AL COMPLETAR TODO) -->
+        <div id="grandWinnerCard" class="hidden gold-gradient-card p-6 rounded-3xl text-center space-y-3">
+          <span class="text-4xl">🏆🎁</span>
+          <h2 class="text-lg font-black text-amber-950 uppercase tracking-tight">¡Salvaste el Social Navideño!</h2>
+          <p class="text-xs text-amber-900 font-medium leading-relaxed">
+            Uniste los 4 fragmentos de la partitura secreta y completaste tus 5 Objetivos de Baile.
+          </p>
+          <div class="bg-white/80 backdrop-blur p-4 rounded-2xl border border-amber-400">
+            <span class="text-[10px] font-bold text-amber-800 uppercase tracking-widest block mb-1">Tu Código Sorpresa de Ganador</span>
+            <span id="grandWinnerCode" class="text-2xl font-black text-rose-700 tracking-wider">----</span>
+          </div>
+          <p class="text-[11px] font-bold text-amber-900 italic">Muestra esta pantalla al Anfitrión para reclamar tu premio.</p>
+        </div>
+
+        <div id="pistasContainer" class="space-y-4">
+          <p class="text-slate-400 text-xs text-center py-4 font-medium">Cargando la historia del Misterio Navideño...</p>
+        </div>
       </div>
 
-      <div class="card-white p-6 rounded-3xl shadow-xl border border-purple-100">
+      <!-- REGISTRO Y BANDERAS -->
+      <div class="card-white p-6 rounded-3xl shadow-xl border border-slate-200">
         <div class="flex items-center justify-between mb-4">
-          <h3 class="font-extrabold text-xs text-purple-950 uppercase tracking-wider">Personas con las que he bailado</h3>
-          <button onclick="refreshData()" class="text-xs text-purple-600 font-bold hover:underline">Actualizar 🔄</button>
+          <h3 class="font-extrabold text-xs text-slate-900 uppercase tracking-wider">Personas con las que he bailado</h3>
+          <button onclick="refreshData()" class="text-xs text-rose-600 font-bold hover:underline">Actualizar 🔄</button>
         </div>
         <div id="myDancesList" class="space-y-2 mb-6">
           <p class="text-slate-400 text-xs text-center py-2 font-medium">Cargando tus bailes...</p>
         </div>
 
         <div class="pt-4 border-t border-slate-100">
-          <h3 class="font-extrabold text-xs text-purple-950 uppercase tracking-wider mb-3">Reconocimientos Recibidos</h3>
+          <h3 class="font-extrabold text-xs text-slate-900 uppercase tracking-wider mb-3">Reconocimientos Recibidos</h3>
           <div id="badgeList" class="space-y-2">
             <p class="text-slate-400 text-xs text-center py-2 font-medium">Cargando reconocimientos...</p>
           </div>
@@ -307,12 +325,12 @@
 
     <!-- PESTAÑA 2: ENCUESTA CANCIONES -->
     <div id="tabPollContent" class="space-y-4 hidden">
-      <div class="card-white p-6 rounded-3xl shadow-xl border border-purple-100">
+      <div class="card-white p-6 rounded-3xl shadow-xl border border-slate-200">
         <div class="flex items-center gap-2 mb-2">
           <span class="text-2xl">🎵</span>
           <div>
-            <h2 class="text-base font-black text-purple-950">Encuesta</h2>
-            <p class="text-[11px] text-slate-500">Vota por tu opción favorita. ¡Solo puedes votar 1 vez!</p>
+            <h2 class="text-base font-black text-slate-900">Encuesta Navideña</h2>
+            <p class="text-[11px] text-slate-500">Vota por tu canción favorita. ¡Solo puedes votar 1 vez!</p>
           </div>
         </div>
         <div id="pollStatusContainer" class="mt-4 space-y-3">
@@ -324,13 +342,13 @@
   </div>
 
   <!-- BARRA INFERIOR -->
-  <nav id="bottomNav" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-2 pb-safe hidden z-40 shadow-lg">
+  <nav id="bottomNav" class="fixed bottom-0 left-0 right-0 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 p-2 pb-safe hidden z-40 shadow-lg">
     <div class="max-w-md mx-auto grid grid-cols-2 gap-2">
-      <button id="navBtnDance" onclick="switchTab('dance')" class="flex flex-col items-center justify-center py-2 rounded-2xl transition bg-purple-100 text-purple-900 font-bold active:scale-95">
+      <button id="navBtnDance" onclick="switchTab('dance')" class="flex flex-col items-center justify-center py-2 rounded-2xl transition bg-rose-600 text-white font-bold active:scale-95">
         <span class="text-lg">💃</span>
-        <span class="text-[11px]">Bailes</span>
+        <span class="text-[11px]">Bailes y Partitura</span>
       </button>
-      <button id="navBtnPoll" onclick="switchTab('poll')" class="flex flex-col items-center justify-center py-2 rounded-2xl transition text-slate-500 font-semibold hover:bg-slate-50 active:scale-95">
+      <button id="navBtnPoll" onclick="switchTab('poll')" class="flex flex-col items-center justify-center py-2 rounded-2xl transition text-slate-400 font-semibold hover:bg-slate-800 active:scale-95">
         <span class="text-lg">🎵</span>
         <span class="text-[11px]">Encuesta</span>
       </button>
@@ -341,7 +359,6 @@
     let autoRefreshInterval = null;
     let knownReceivedCount = null;
     let isFirstLoad = true;
-    let codeIsUnlocked = false;
     let selectedSong = null;
     let refreshing = false;
     let pollLoading = false;
@@ -384,13 +401,13 @@
       if (tab === 'dance') {
         danceTab.classList.remove('hidden');
         pollTab.classList.add('hidden');
-        btnDance.className = "flex flex-col items-center justify-center py-2 rounded-2xl transition bg-purple-100 text-purple-900 font-bold active:scale-95";
-        btnPoll.className = "flex flex-col items-center justify-center py-2 rounded-2xl transition text-slate-500 font-semibold hover:bg-slate-50 active:scale-95";
+        btnDance.className = "flex flex-col items-center justify-center py-2 rounded-2xl transition bg-rose-600 text-white font-bold active:scale-95";
+        btnPoll.className = "flex flex-col items-center justify-center py-2 rounded-2xl transition text-slate-400 font-semibold hover:bg-slate-800 active:scale-95";
       } else {
         danceTab.classList.add('hidden');
         pollTab.classList.remove('hidden');
-        btnPoll.className = "flex flex-col items-center justify-center py-2 rounded-2xl transition bg-purple-100 text-purple-900 font-bold active:scale-95";
-        btnDance.className = "flex flex-col items-center justify-center py-2 rounded-2xl transition text-slate-500 font-semibold hover:bg-slate-50 active:scale-95";
+        btnPoll.className = "flex flex-col items-center justify-center py-2 rounded-2xl transition bg-rose-600 text-white font-bold active:scale-95";
+        btnDance.className = "flex flex-col items-center justify-center py-2 rounded-2xl transition text-slate-400 font-semibold hover:bg-slate-800 active:scale-95";
         loadPoll();
       }
     }
@@ -448,20 +465,14 @@
       location.reload();
     }
 
-    function revealCode() {
-      if (!codeIsUnlocked || !currentUser) return;
-      const updatedUser = participants.find(p => String(p.id).trim() === String(currentUser.id).trim());
-      const code = (updatedUser && updatedUser.codigoSorpresa) ? updatedUser.codigoSorpresa : (currentUser.codigoSorpresa || "¡SIN CÓDIGO!");
-
-      document.getElementById('secretCodeText').innerHTML = `<span class="text-xl font-black text-emerald-600 tracking-wider">${code}</span>`;
-      showModal('🎁 ¡Felicidades!', `Tu código sorpresa es: ${code}`);
-    }
-
     function refreshData() {
       if (!currentUser || refreshing || document.hidden) return;
       refreshing = true;
 
-      api('getLogs').then(function(logs) {
+      Promise.all([
+        api('getLogs'),
+        api('getChallengeData', currentUser.id)
+      ]).then(function([logs, challengeData]) {
         logs = logs || [];
         const currentIdStr = String(currentUser.id).trim();
 
@@ -489,6 +500,7 @@
           }
         }
 
+        // Renderizar Lista de Parejas Objetivos
         const assignedIds = currentUser.assignedTargets || [];
         let targetMatchedCount = 0;
 
@@ -513,8 +525,8 @@
               cardStyle = "bg-emerald-50/50 border-emerald-200 text-emerald-700";
               badgeIcon = `<span class="absolute -top-1.5 -right-1.5 bg-amber-400 text-white rounded-full text-[9px] w-4 h-4 flex items-center justify-center font-bold shadow">⏳</span>`;
             } else if (targetRegisteredMe) {
-              cardStyle = "bg-purple-50 border-purple-300 text-purple-900 animate-pulse";
-              badgeIcon = `<span class="absolute -top-1.5 -right-1.5 bg-purple-600 text-white rounded-full text-[9px] w-4 h-4 flex items-center justify-center font-bold shadow">📲</span>`;
+              cardStyle = "bg-rose-50 border-rose-300 text-rose-900 animate-pulse";
+              badgeIcon = `<span class="absolute -top-1.5 -right-1.5 bg-rose-600 text-white rounded-full text-[9px] w-4 h-4 flex items-center justify-center font-bold shadow">📲</span>`;
             }
 
             return `
@@ -530,27 +542,19 @@
 
         document.getElementById('targetMatchedCount').innerText = `${targetMatchedCount} / ${assignedIds.length}`;
 
-        const btnCode = document.getElementById('btnRevealCode');
-        const codeContainer = document.getElementById('secretCodeContainer');
-
-        if (assignedIds.length > 0 && targetMatchedCount >= assignedIds.length) {
-          codeIsUnlocked = true;
-          btnCode.disabled = false;
-          btnCode.className = "w-full mt-3 brand-gradient-btn text-white font-extrabold py-3 rounded-2xl text-xs transition active:scale-95 shadow-md cursor-pointer";
-          btnCode.innerText = "🎉 Ver Mi Código Sorpresa";
-          codeContainer.className = "bg-emerald-50 p-4 rounded-2xl border border-emerald-200";
-          if (document.getElementById('secretCodeText').innerText.includes("BLOQUEADO")) {
-            document.getElementById('secretCodeText').innerHTML = `<span class="text-emerald-800 font-extrabold text-xs">¡RETO COMPLETADO! Presiona abajo para revelar.</span>`;
-          }
+        // Renderizar Tarjeta de Gran Ganador si aplica
+        const grandWinnerEl = document.getElementById('grandWinnerCard');
+        if (challengeData.showGrandWinner) {
+          grandWinnerEl.classList.remove('hidden');
+          document.getElementById('grandWinnerCode').innerText = challengeData.codigoSorpresa || "¡GANADOR!";
         } else {
-          codeIsUnlocked = false;
-          btnCode.disabled = true;
-          btnCode.className = "w-full mt-3 bg-slate-200 text-slate-400 font-extrabold py-3 rounded-2xl text-xs transition cursor-not-allowed";
-          btnCode.innerText = `🔒 Bloqueado (${targetMatchedCount}/${assignedIds.length} Objetivos)`;
-          codeContainer.className = "bg-slate-100 p-4 rounded-2xl border border-slate-200";
-          document.getElementById('secretCodeText').innerHTML = `<span class="text-slate-400 font-bold text-sm tracking-widest">🔒 CÓDIGO BLOQUEADO</span>`;
+          grandWinnerEl.classList.add('hidden');
         }
 
+        // Renderizar las 4 Tarjetas de Pistas Navideñas
+        renderPistas(challengeData.tarjetas);
+
+        // Lista de Bailes Registrados
         const myDancesListEl = document.getElementById('myDancesList');
         if (myDances.length === 0) {
           myDancesListEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-2 font-medium">Aún no has registrado bailes.</p>';
@@ -567,7 +571,7 @@
             return `
               <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex justify-between items-center">
                 <div>
-                  <span class="font-bold text-xs text-purple-950">${partnerDisplayName}</span>
+                  <span class="font-bold text-xs text-slate-900">${partnerDisplayName}</span>
                   <span class="text-[11px] text-slate-400 font-mono ml-1">(ID: ${partnerId})</span>
                 </div>
                 ${isMutuo
@@ -577,6 +581,7 @@
           }).reverse().join('');
         }
 
+        // Banderas / Mensajes Recibidos
         const badgeListEl = document.getElementById('badgeList');
         if (receivedBadges.length === 0) {
           badgeListEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-2 font-medium">Sin mensajes aún.</p>';
@@ -587,9 +592,9 @@
             const senderName = sender ? sender.nombre : `Bailarín ${senderId}`;
 
             return `
-              <div class="bg-purple-50/50 p-3.5 rounded-2xl border-l-4 border-l-purple-600 border border-purple-100">
-                <div class="text-[11px] font-bold text-purple-950">
-                  ${senderName} <span class="font-mono text-purple-400">(ID: ${senderId})</span>
+              <div class="bg-rose-50/50 p-3.5 rounded-2xl border-l-4 border-l-rose-600 border border-rose-100">
+                <div class="text-[11px] font-bold text-slate-900">
+                  ${senderName} <span class="font-mono text-rose-400">(ID: ${senderId})</span>
                 </div>
                 <p class="text-xs text-slate-700 mt-1 font-medium">"${b.mensaje}"</p>
               </div>`;
@@ -599,6 +604,87 @@
         console.error(e);
       }).finally(function() {
         refreshing = false;
+      });
+    }
+
+    function renderPistas(tarjetas) {
+      const container = document.getElementById('pistasContainer');
+      if (!tarjetas || tarjetas.length === 0) {
+        container.innerHTML = '<p class="text-slate-400 text-xs text-center py-2 font-medium">No se encontraron pistas.</p>';
+        return;
+      }
+
+      container.innerHTML = tarjetas.map(t => {
+        let statusBadge = "";
+        let borderClass = "border-slate-200 bg-slate-50";
+
+        if (t.completed) {
+          statusBadge = `<span class="bg-emerald-500 text-white text-[10px] font-bold px-2.5 py-1 rounded-xl shadow-sm">✅ NOTA RESCATADA</span>`;
+          borderClass = "border-emerald-300 bg-emerald-50/40";
+        } else if (t.unlocked) {
+          statusBadge = `<span class="bg-rose-600 text-white text-[10px] font-bold px-2.5 py-1 rounded-xl shadow-sm">🔓 DESBLOQUEADA</span>`;
+          borderClass = "border-rose-300 bg-white shadow-sm";
+        } else {
+          statusBadge = `<span class="bg-slate-200 text-slate-600 text-[10px] font-bold px-2.5 py-1 rounded-xl">🔒 BLOQUEADA</span>`;
+          borderClass = "border-slate-200 bg-slate-100/80 opacity-75";
+        }
+
+        let inputBlock = "";
+
+        if (t.completed) {
+          inputBlock = `<div class="bg-emerald-100/70 text-emerald-900 text-xs font-bold p-3 rounded-xl text-center">✨ ¡Has descifrado este fragmento de la partitura!</div>`;
+        } else if (t.unlocked) {
+          const btnText = (t.pistaNumero === 2) ? "Validar Código de Staff ⚡" : "Enviar Respuesta 🧩";
+          const placeholder = (t.pistaNumero === 2) ? "Ingresa el Código del DJ o Anfitrión" : "Ingresa la solución encontrada";
+
+          inputBlock = `
+            <div class="space-y-2.5 mt-3 pt-3 border-t border-slate-100">
+              <p class="text-[11px] font-extrabold text-slate-800">📍 Ubicación: <span class="text-rose-700 font-bold">${escapeHtml(t.ubicacion)}</span></p>
+              <p class="text-xs text-slate-600 font-medium bg-slate-50 p-2.5 rounded-xl border border-slate-200/80">⚡ <b>Prueba:</b> ${escapeHtml(t.actividad)}</p>
+              <div class="flex gap-2">
+                <input id="pistaInput_${t.pistaNumero}" type="text" placeholder="${placeholder}" class="w-full px-3.5 py-2.5 rounded-xl input-light text-xs font-semibold outline-none transition uppercase">
+                <button onclick="submitPista(${t.pistaNumero})" class="brand-gradient-btn text-white text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 active:scale-95 shadow">
+                  ${btnText}
+                </button>
+              </div>
+            </div>
+          `;
+        } else {
+          inputBlock = `<p class="text-[11px] text-slate-500 font-medium italic mt-2">🔒 ${escapeHtml(t.requisitoTexto)}</p>`;
+        }
+
+        return `
+          <div class="p-4 rounded-2xl border ${borderClass} transition-all space-y-2">
+            <div class="flex justify-between items-center">
+              <h4 class="font-extrabold text-xs text-slate-900 uppercase tracking-wider">${escapeHtml(t.titulo)}</h4>
+              ${statusBadge}
+            </div>
+            <p class="text-xs text-slate-700 leading-relaxed font-medium">${escapeHtml(t.historia)}</p>
+            ${inputBlock}
+          </div>
+        `;
+      }).join('');
+    }
+
+    function submitPista(pistaNumero) {
+      const inputEl = document.getElementById(`pistaInput_${pistaNumero}`);
+      if (!inputEl) return;
+
+      const valor = inputEl.value.trim();
+      if (!valor) {
+        showModal('Atención', 'Por favor ingresa la respuesta o el código de Staff.');
+        return;
+      }
+
+      api('validateChallenge', currentUser.id, pistaNumero, valor).then(function(res) {
+        if (res.status === 'SUCCESS') {
+          showModal('🎉 ¡Partitura Rescatada!', res.message || 'Has superado este fragmento.');
+          refreshData();
+        } else {
+          showModal('Aviso', res.message || 'Código o respuesta incorrecta.');
+        }
+      }).catch(function(e) {
+        showModal('Error', e.message);
       });
     }
 
@@ -698,7 +784,7 @@
             <div class="bg-emerald-50 border border-emerald-200 p-3.5 rounded-2xl mb-4 text-center">
               <span class="text-xs font-bold text-emerald-800">✅ Ya votaste por: <span class="underline">${escapeHtml(data.userVote)}</span></span>
             </div>
-            <h4 class="text-xs font-bold text-purple-950 uppercase tracking-wider mb-3">Resultados en Vivo (${total} Votos):</h4>
+            <h4 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3">Resultados en Vivo (${total} Votos):</h4>
           `;
 
           data.options.forEach(optObj => {
@@ -721,14 +807,14 @@
             const imgBlock = renderPollImg(imageUrl);
 
             html += `
-              <div class="bg-slate-50 p-3.5 rounded-2xl border ${isMyChoice ? 'border-purple-500 bg-purple-50/30' : 'border-slate-100'} space-y-2 mb-3">
+              <div class="bg-slate-50 p-3.5 rounded-2xl border ${isMyChoice ? 'border-rose-500 bg-rose-50/30' : 'border-slate-100'} space-y-2 mb-3">
                 <div class="flex justify-between items-center text-xs font-bold">
-                  <span class="${isMyChoice ? 'text-purple-900 font-extrabold' : 'text-slate-700'}">${escapeHtml(songName)} ${isMyChoice ? '⭐' : ''}</span>
+                  <span class="${isMyChoice ? 'text-rose-900 font-extrabold' : 'text-slate-700'}">${escapeHtml(songName)} ${isMyChoice ? '⭐' : ''}</span>
                   <span class="text-slate-500 font-mono ml-2 shrink-0">${pct}% (${count})</span>
                 </div>
                 ${imgBlock}
                 <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden mt-1">
-                  <div class="bg-gradient-to-r from-purple-600 to-rose-500 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
+                  <div class="bg-gradient-to-r from-rose-600 to-emerald-600 h-full rounded-full transition-all duration-500" style="width: ${pct}%"></div>
                 </div>
               </div>
             `;
@@ -756,10 +842,10 @@
             const imgBlock = renderPollImg(imageUrl);
 
             html += `
-              <label class="block p-3.5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-purple-50/50 cursor-pointer transition">
+              <label class="block p-3.5 rounded-2xl border border-slate-200 bg-slate-50 hover:bg-rose-50/50 cursor-pointer transition">
                 <div class="flex items-center gap-3">
-                  <input type="radio" name="songOption" value="${escapeHtml(songName)}" onclick="selectedSong=this.value" class="w-4 h-4 text-purple-600 focus:ring-purple-500 shrink-0">
-                  <span class="text-xs font-bold text-purple-950 flex-1">${escapeHtml(songName)}</span>
+                  <input type="radio" name="songOption" value="${escapeHtml(songName)}" onclick="selectedSong=this.value" class="w-4 h-4 text-rose-600 focus:ring-rose-500 shrink-0">
+                  <span class="text-xs font-bold text-slate-900 flex-1">${escapeHtml(songName)}</span>
                 </div>
                 ${imgBlock}
               </label>
@@ -807,7 +893,7 @@
           showModal('🎉 ¡Voto Registrado!', 'Tu elección ha sido registrada con éxito.');
           selectedSong = null;
 
-          container.innerHTML = '<p class="text-purple-700 text-xs text-center py-4 font-bold animate-pulse">Actualizando resultados en vivo...</p>';
+          container.innerHTML = '<p class="text-rose-700 text-xs text-center py-4 font-bold animate-pulse">Actualizando resultados en vivo...</p>';
 
           setTimeout(function() {
             loadPoll();
