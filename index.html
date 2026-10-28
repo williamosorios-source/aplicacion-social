@@ -134,7 +134,7 @@
     }
 
     .input-light {
-      background: #f8fafc;
+      background: #ffffff;
       border: 1.5px solid #e2e8f0;
       color: #3b0764;
       -webkit-appearance: none;
@@ -166,21 +166,22 @@
     </div>
   </div>
 
-  <!-- PANTALLA LOGIN -->
-  <div id="loginSection" class="w-full max-w-sm card-white p-6 sm:p-8 rounded-3xl shadow-xl my-auto text-center border border-purple-100 shrink-0">
+  <!-- PANTALLA LOGIN SIN RECUADRO -->
+  <div id="loginSection" class="w-full max-w-sm my-auto text-center shrink-0">
     
-    <!-- Imagen de Portada en lugar del SVG y título previo -->
-    <div class="mb-6 flex justify-center">
+    <!-- Imagen de Portada Límpida sin bordes ni sombras -->
+    <div class="mb-4 flex justify-center">
       <img src="portada.png" 
            alt="Portada Social Pa'l Desparche" 
-           class="w-full max-w-[280px] h-auto object-contain rounded-2xl shadow-sm border border-slate-100"
+           class="w-full max-w-[280px] h-auto object-contain block mx-auto border-none outline-none shadow-none"
            onerror="this.onerror=null; this.src='portada.jpg';">
     </div>
 
-    <div class="space-y-4 text-left">
+    <!-- Formulario Limpio -->
+    <div class="space-y-4 text-left px-2">
       <div>
         <label class="block text-[11px] font-bold text-purple-950 mb-1.5 uppercase tracking-wider">Número de Cédula</label>
-        <input id="cedulaInput" type="number" pattern="[0-9]*" inputmode="numeric" placeholder="Ej. 12345678" class="w-full px-4 py-3.5 rounded-2xl input-light font-semibold outline-none transition">
+        <input id="cedulaInput" type="number" pattern="[0-9]*" inputmode="numeric" placeholder="Ej. 12345678" class="w-full px-4 py-3.5 rounded-2xl input-light font-semibold outline-none transition shadow-sm">
       </div>
 
       <button id="btnLogin" onclick="login()" class="w-full brand-gradient-btn text-white font-extrabold py-4 rounded-2xl text-sm transition active:scale-95 shadow-lg shadow-purple-500/25">
