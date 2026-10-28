@@ -226,7 +226,7 @@ const NARRATIVA_PISTAS = {
   },
   2: {
     titulo: 'Pista 2: La Chispa Navideña',
-    historia: '🎼 El Grinch bloqueó el sonido y dejó el 2º fragmento de la partitura bajo custodia. 👥 Conectaste con tus parejas objetivo y la música cobró fuerza. ⚡ Dirígete al DJ o al Anfitrión para superar su prueba física y recibir el código del segundo fragmento.'
+    historia: '🎼 El Grinch bloqueó el sonido y dejó el 2º fragmento de la partitura bajo custodia de Staff. 👥 Conectaste con tus parejas objetivo y la música cobró fuerza. ⚡ Dirígete a la estación asignada para superar la prueba física y solicitar el código de desbloqueo.'
   },
   3: {
     titulo: 'Pista 3: El Desierto del Grinch',
@@ -264,9 +264,9 @@ async function readRetosSheet_() {
     }
   }
 
-  // Leer códigos maestros del staff de Celdas N2 y O2
-  let codigoAnfitrion = "NAVIDAD2026";
-  let codigoDJ = "RITMO2026";
+  // Leer códigos maestros del staff exclusivamente de las celdas N2 (Anfitrión) y O2 (DJ)
+  let codigoAnfitrion = "";
+  let codigoDJ = "";
 
   try {
     const resStaff = await sheetsClient.spreadsheets.values.get({
@@ -277,7 +277,9 @@ async function readRetosSheet_() {
       if (resStaff.data.values[0][0]) codigoAnfitrion = cellStr_(resStaff.data.values[0][0]);
       if (resStaff.data.values[0][1]) codigoDJ = cellStr_(resStaff.data.values[0][1]);
     }
-  } catch (_) {}
+  } catch (err) {
+    console.error("Error al leer celdas N2:O2 de RETOS:", err);
+  }
 
   return { retosMap, codigoAnfitrion, codigoDJ };
 }
@@ -295,7 +297,6 @@ async function getChallengeData(userId) {
     const logs = await readLogs_();
     const myUniqueDancesCount = user.bailesConfirmados || 0;
 
-    // Calcular cuántos de sus 5 Objetivos han sido confirmados mutuamente
     const assignedIds = user.assignedTargets || [];
     let targetMatchedCount = 0;
 
@@ -329,11 +330,28 @@ async function getChallengeData(userId) {
 
       const isCompleted = user.retosCompletados.includes(pistaNum);
       const retoId = user.retosAsignados[pistaNum - 1] || (pistaNum === 2 ? 1 : 3);
-      const retoInfo = retosMap[retoId] || {
-        ubicacion: "Ubicación Misteriosa",
-        actividad: "Supera la prueba asignada.",
-        tipoValidacion: pistaNum === 2 ? "STAFF_ANFITRION" : "RESPUESTA"
-      };
+      
+      let retoInfo = retosMap[retoId];
+      if (!retoInfo) {
+        if (retoId === 1) {
+          retoInfo = { ubicacion: "Estación del Anfitrión", actividad: "Acércate al Anfitrión y supera su prueba física.", tipoValidacion: "STAFF_ANFITRION" };
+        } else if (retoId === 2) {
+          retoInfo = { ubicacion: "Estación del DJ", actividad: "Acércate al DJ y supera la prueba musical.", tipoValidacion: "STAFF_DJ" };
+        } else {
+          retoInfo = { ubicacion: "Ubicación Misteriosa", actividad: "Supera la prueba asignada.", tipoValidacion: "RESPUESTA" };
+        }
+      }
+
+      // Asegurar nombres de ubicación claros para Pista 2
+      if (pistaNum === 2) {
+        if (retoId === 1 || retoInfo.tipoValidacion === 'STAFF_ANFITRION') {
+          retoInfo.ubicacion = "Estación del Anfitrión";
+          retoInfo.tipoValidacion = "STAFF_ANFITRION";
+        } else {
+          retoInfo.ubicacion = "Estación del DJ";
+          retoInfo.tipoValidacion = "STAFF_DJ";
+        }
+      }
 
       tarjetas.push({
         pistaNumero: pistaNum,
@@ -387,7 +405,7 @@ async function validateChallenge(userId, pistaNumero, respuestaOcodigo) {
     }
 
     if (!tarjeta.unlocked) {
-      return { status: 'ERROR', message: 'Esta pista aún está bloqueada. Revisa los requisitos de baile u objetivos.' };
+      return { status: 'ERROR', message: 'Esta pista aún está bloqueada.' };
     }
 
     if (tarjeta.completed) {
@@ -399,18 +417,24 @@ async function validateChallenge(userId, pistaNumero, respuestaOcodigo) {
 
     let isValid = false;
 
-    if (tarjeta.tipoValidacion === 'STAFF_ANFITRION') {
+    // Validación según la estación asignada
+    if (tarjeta.tipoValidacion === 'STAFF_ANFITRION' || tarjeta.retoId === 1) {
+      if (!codigoAnfitrion) {
+        return { status: 'ERROR', message: 'Código de Anfitrión no configurado en la celda N2 de la hoja RETOS.' };
+      }
       isValid = (inputVal === codigoAnfitrion.toUpperCase());
-    } else if (tarjeta.tipoValidacion === 'STAFF_DJ') {
+    } else if (tarjeta.tipoValidacion === 'STAFF_DJ' || tarjeta.retoId === 2) {
+      if (!codigoDJ) {
+        return { status: 'ERROR', message: 'Código de DJ no configurado en la celda O2 de la hoja RETOS.' };
+      }
       isValid = (inputVal === codigoDJ.toUpperCase());
     } else {
-      // Validación por respuesta de acertijo / ubicación
       const expectedSol = retoInfo ? String(retoInfo.solucion).trim().toUpperCase() : '';
       isValid = (expectedSol !== '' && inputVal === expectedSol);
     }
 
     if (!isValid) {
-      return { status: 'ERROR', message: 'Código o respuesta incorrecta. Inténtalo de nuevo o consulta con el Staff.' };
+      return { status: 'ERROR', message: 'Código o respuesta incorrecta. Verifica con el Staff.' };
     }
 
     // Actualizar Google Sheets
@@ -432,7 +456,7 @@ async function validateChallenge(userId, pistaNumero, respuestaOcodigo) {
       requestBody: { values: [[newCompletados.join(',')]] },
     });
 
-    // 2. Registrar anidadamente el ID del usuario en Columna E de RETOS
+    // 2. Registrar el ID del usuario en Columna E de la hoja RETOS
     if (retoInfo) {
       let currentIds = retoInfo.idsCompletados ? retoInfo.idsCompletados.split(',').map(s => s.trim()).filter(s => s !== '') : [];
       if (!currentIds.includes(uidStr)) {
