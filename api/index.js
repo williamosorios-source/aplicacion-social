@@ -14,11 +14,16 @@ const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_ID;
 
 // Helper para leer rangos
 async function readSheetRange(range) {
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: range,
-  });
-  return res.data.values || [];
+  try {
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: SPREADSHEET_ID,
+      range: range,
+    });
+    return res.data.values || [];
+  } catch (err) {
+    console.error(`Error al leer rango ${range}:`, err);
+    return [];
+  }
 }
 
 // Helper para escribir/actualizar celdas
@@ -68,6 +73,43 @@ async function updateChallengeCompletedUsers(challengeId, idsString) {
   }
 }
 
+// Helper para asignar los 4 retos aleatorios a un usuario si no los tiene en Columna I
+async function ensureUserChallengesAssigned(user) {
+  if (user.retosAsignados && user.retosAsignados.length > 0) {
+    return user.retosAsignados.split(',').map(s => s.trim()).filter(Boolean);
+  }
+
+  // Generar secuencia de 4 retos
+  const randomPista1 = Math.floor(Math.random() * 8) + 3; // 3 a 10
+  const randomPista2 = Math.random() < 0.5 ? 1 : 2; // Obligatorio ID 1 (Anfitrión) o ID 2 (DJ)
+
+  let randomPista3 = Math.floor(Math.random() * 8) + 3;
+  while (randomPista3 === randomPista1) {
+    randomPista3 = Math.floor(Math.random() * 8) + 3;
+  }
+
+  let randomPista4 = Math.floor(Math.random() * 8) + 3;
+  while (randomPista4 === randomPista1 || randomPista4 === randomPista3) {
+    randomPista4 = Math.floor(Math.random() * 8) + 3;
+  }
+
+  const assignedArray = [randomPista1, randomPista2, randomPista3, randomPista4];
+  const assignedString = assignedArray.join(',');
+
+  try {
+    const rows = await readSheetRange('PARTICIPANTES!A2:A');
+    const rowIndex = rows.findIndex(r => String(r[0]).trim() === String(user.id).trim());
+    if (rowIndex !== -1) {
+      const sheetRow = rowIndex + 2;
+      await updateSheetRange(`PARTICIPANTES!I${sheetRow}`, [[assignedString]]);
+    }
+  } catch (err) {
+    console.error('Error al guardar retos asignados:', err);
+  }
+
+  return assignedArray.map(String);
+}
+
 // 2. Leer Logs de Bailes
 async function getLogs() {
   const rows = await readSheetRange('LOGS!A2:D');
@@ -90,13 +132,11 @@ async function registerDance(idEmisor, idReceptor, mensaje) {
 
   const logs = await getLogs();
   
-  // Verificar si ya registró este baile previamente
   const alreadyRegistered = logs.some(l => l.idEmisor === idEmisor && l.idReceptor === idReceptor);
   if (alreadyRegistered) {
     return { status: 'ERROR', message: 'Ya habías registrado un baile con esta persona.' };
   }
 
-  // Registrar nuevo baile en LOGS
   const now = new Date().toISOString();
   await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
@@ -107,7 +147,6 @@ async function registerDance(idEmisor, idReceptor, mensaje) {
     }
   });
 
-  // Verificar si hay coincidencia mutua (Match)
   const isMutual = logs.some(l => l.idEmisor === idReceptor && l.idReceptor === idEmisor);
 
   return { status: 'SUCCESS', matched: isMutual };
@@ -123,36 +162,45 @@ async function getChallengeData(userId) {
     return { tarjetas: [], showGrandWinner: false };
   }
 
+  const retosAsignadosIds = await ensureUserChallengesAssigned(user);
   const logs = await getLogs();
 
-  // Calcular bailes confirmados (coincidencias mutuas)
-  const myEmittedReceptors = new Set(logs.filter(l => l.idEmisor === userId).map(l => l.idReceptor));
-  const myReceivedSenders = new Set(logs.filter(l => l.idReceptor === userId).map(l => l.idEmisor));
+  const myEmittedReceptors = new Set(logs.filter(l => String(l.idEmisor).trim() === userId).map(l => String(l.idReceptor).trim()));
+  const myReceivedSenders = new Set(logs.filter(l => String(l.idReceptor).trim() === userId).map(l => String(l.idEmisor).trim()));
   
   const confirmedMatches = [...myEmittedReceptors].filter(id => myReceivedSenders.has(id));
 
-  // Calcular cuántas de las 5 parejas objetivo asignadas se han completado
   const targets = user.assignedTargets || [];
   const matchedTargetsCount = targets.filter(tId => confirmedMatches.includes(String(tId).trim())).length;
 
-  // Cargar lista de retos desde la pestaña RETOS
   const retosRows = await readSheetRange('RETOS!A2:F11');
   const retosMap = {};
-  retosRows.forEach(r => {
-    retosMap[String(r[0]).trim()] = {
-      id: String(r[0] || '').trim(),
-      ubicacion: String(r[1] || '').trim(),
-      actividad: String(r[2] || '').trim(),
-      respuesta: String(r[3] || '').trim(),
-      tipoValidacion: String(r[5] || '').trim()
+  
+  for (let i = 1; i <= 10; i++) {
+    retosMap[String(i)] = {
+      id: String(i),
+      ubicacion: i === 1 ? 'Anfitrión del Evento' : (i === 2 ? 'Cabina del DJ' : `Punto Físico #${i}`),
+      actividad: 'Presenta la prueba para obtener la validación.',
+      respuesta: '',
+      tipoValidacion: i === 1 ? 'STAFF_ANFITRION' : (i === 2 ? 'STAFF_DJ' : 'RESPUESTA')
     };
+  }
+
+  retosRows.forEach(r => {
+    const idStr = String(r[0] || '').trim();
+    if (idStr) {
+      retosMap[idStr] = {
+        id: idStr,
+        ubicacion: String(r[1] || '').trim() || `Punto Físico #${idStr}`,
+        actividad: String(r[2] || '').trim() || 'Prueba Navideña',
+        respuesta: String(r[3] || '').trim(),
+        tipoValidacion: String(r[5] || '').trim() || 'RESPUESTA'
+      };
+    }
   });
 
-  // Parsear retos asignados y completados del usuario
-  const retosAsignadosIds = String(user.retosAsignados || '').split(',').map(s => s.trim()).filter(Boolean);
   const completadosPistas = String(user.retosCompletados || '').split(',').map(s => s.trim()).filter(Boolean);
 
-  // Micro-historias de los 4 capítulos
   const historias = [
     "❄️ El Grinch congeló la Navidad y escondió los 4 fragmentos de la partitura secreta del baile. 🎶 Saliste a la pista y recuperaste la 1ª nota musical.",
     "🎼 El Grinch bloqueó el sonido y dejó el 2º fragmento de la partitura bajo custodia. 👥 Conectaste con tus parejas objetivo y la música cobró fuerza.",
@@ -167,7 +215,6 @@ async function getChallengeData(userId) {
     "Capítulo 4: La Estrella del Social"
   ];
 
-  // Construir estado de las 4 Tarjetas de Pistas
   const tarjetas = [1, 2, 3, 4].map((num) => {
     let unlocked = false;
     let requisitoTexto = "";
@@ -187,8 +234,8 @@ async function getChallengeData(userId) {
     }
 
     const completed = completadosPistas.includes(String(num));
-    const challengeId = retosAsignadosIds[num - 1] || "1";
-    const retoInfo = retosMap[challengeId] || { ubicacion: 'Zona Social', actividad: 'Prueba Navideña', tipoValidacion: 'RESPUESTA' };
+    const challengeId = String(retosAsignadosIds[num - 1] || "1").trim();
+    const retoInfo = retosMap[challengeId] || retosMap["1"];
 
     return {
       pistaNumero: num,
@@ -213,7 +260,7 @@ async function getChallengeData(userId) {
   };
 }
 
-// 5. Validar Reto / Respuesta (Lógica con Columna D de RETOS)
+// 5. Validar Reto / Respuesta (Compara directamente contra Columna D de RETOS)
 async function validateChallenge(userId, pistaNumero, respuestaOcodigo) {
   pistaNumero = Number(pistaNumero);
   respuestaOcodigo = String(respuestaOcodigo || '').trim();
@@ -236,7 +283,6 @@ async function validateChallenge(userId, pistaNumero, respuestaOcodigo) {
     return { status: 'ERROR', message: 'No se encontró un reto configurado para esta pista.' };
   }
 
-  // Leer filas de la pestaña RETOS
   const retosData = await readSheetRange('RETOS!A2:F11');
   const challengeRow = retosData.find(r => String(r[0]).trim() === String(challengeId).trim());
 
@@ -244,17 +290,15 @@ async function validateChallenge(userId, pistaNumero, respuestaOcodigo) {
     return { status: 'ERROR', message: 'Detalles del reto no encontrados.' };
   }
 
-  // La respuesta / código esperado está almacenado en la Columna D (Índice 3)
+  // Código/Respuesta de la Columna D (Índice 3)
   const expectedAnswer = String(challengeRow[3] || '').trim();
 
-  // Comparación que ignora mayúsculas y espacios
   const isMatch = expectedAnswer.toLowerCase() === respuestaOcodigo.toLowerCase();
 
   if (!isMatch) {
     return { status: 'ERROR', message: 'Código o respuesta incorrecta. Revisa e inténtalo de nuevo.' };
   }
 
-  // Marcar pista como completada en PARTICIPANTES (Columna J)
   let completados = String(user.retosCompletados || '').split(',').map(s => s.trim()).filter(Boolean);
   if (!completados.includes(String(pistaNumero))) {
     completados.push(String(pistaNumero));
@@ -262,7 +306,6 @@ async function validateChallenge(userId, pistaNumero, respuestaOcodigo) {
     await updateParticipantCompletedChallenges(user.id, completados.join(','));
   }
 
-  // Anidar ID de usuario en la Columna E de la pestaña RETOS
   let idsCompletados = String(challengeRow[4] || '').split(',').map(s => s.trim()).filter(Boolean);
   if (!idsCompletados.includes(String(userId))) {
     idsCompletados.push(String(userId));
@@ -331,7 +374,7 @@ async function submitVote(userId, selectedSong) {
   return { status: 'SUCCESS' };
 }
 
-// Handler de Peticiones Vercel Serverless
+// Handler Vercel Serverless
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
