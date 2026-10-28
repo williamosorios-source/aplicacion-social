@@ -636,8 +636,18 @@
         if (t.completed) {
           inputBlock = `<div class="bg-emerald-100/70 text-emerald-900 text-xs font-bold p-3 rounded-xl text-center">✨ ¡Has descifrado este fragmento de la partitura!</div>`;
         } else if (t.unlocked) {
-          const btnText = (t.pistaNumero === 2) ? "Validar Código de Staff ⚡" : "Enviar Respuesta 🧩";
-          const placeholder = (t.pistaNumero === 2) ? "Ingresa el Código del DJ o Anfitrión" : "Ingresa la solución encontrada";
+          let btnText = "Enviar Respuesta 🧩";
+          let placeholder = "Ingresa la solución encontrada";
+
+          if (t.pistaNumero === 2) {
+            if (t.tipoValidacion === 'STAFF_ANFITRION' || t.retoId === 1) {
+              btnText = "Validar Código del Anfitrión ⚡";
+              placeholder = "Código provisto por el Anfitrión";
+            } else {
+              btnText = "Validar Código del DJ 🎧";
+              placeholder = "Código provisto por el DJ";
+            }
+          }
 
           inputBlock = `
             <div class="space-y-2.5 mt-3 pt-3 border-t border-slate-100">
@@ -667,7 +677,6 @@
         `;
       }).join('');
     }
-
     function submitPista(pistaNumero) {
       const inputEl = document.getElementById(`pistaInput_${pistaNumero}`);
       if (!inputEl) return;
