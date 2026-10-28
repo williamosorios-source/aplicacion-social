@@ -1,778 +1,381 @@
-const express = require('express');
-const cors = require('cors');
-const { sheets } = require('@googleapis/sheets');
-const { GoogleAuth } = require('google-auth-library');
-const fetch = require('node-fetch');
+const { google } = require('googleapis');
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.text());
-
-app.use((req, res, next) => {
-  if (typeof req.body === 'string' && req.body.trim()) {
-    try { req.body = JSON.parse(req.body); } catch (_) {}
-  }
-  next();
+// Configuración de Autenticación con Google Sheets
+const auth = new google.auth.GoogleAuth({
+  credentials: {
+    client_email: process.env.GOOGLE_CLIENT_EMAIL,
+    private_key: (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+  },
+  scopes: ['https://www.googleapis.com/auth/spreadsheets'],
 });
 
-const SPREADSHEET_ID = process.env.SPREADSHEET_ID || "1xY6EgKQWwHhPcmugG8kQQsPET2D5dIzAd7LZF6aU_ko";
-const ONESIGNAL_APP_ID = process.env.ONESIGNAL_APP_ID || "985f9dc0-c0d9-445c-b600-75e99180a9fd";
-const ONESIGNAL_REST_KEY = process.env.ONESIGNAL_REST_KEY || "";
+const sheets = google.sheets({ version: 'v4', auth });
+const SPREADSHEET_ID = process.env.GOOGLE_SHEETS_ID;
 
-function getSheetsClient() {
-  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
-  let privateKey = process.env.GOOGLE_PRIVATE_KEY;
-
-  if (!clientEmail || !privateKey) {
-    throw new Error("Faltan las variables de entorno GOOGLE_CLIENT_EMAIL o GOOGLE_PRIVATE_KEY en Vercel.");
-  }
-
-  privateKey = privateKey.replace(/\\n/g, '\n');
-
-  const auth = new GoogleAuth({
-    credentials: {
-      client_email: clientEmail,
-      private_key: privateKey,
-    },
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-
-  return sheets({ version: 'v4', auth });
-}
-
-function seedRandom(seed) {
-  var x = Math.sin(seed++) * 10000;
-  return x - Math.floor(x);
-}
-
-function cellStr_(v) {
-  return String(v !== null && v !== undefined ? v : '').trim();
-}
-
-function getFormattedNow() {
-  const now = new Date();
-  const pad = (n) => String(n).padStart(2, '0');
-  const day = pad(now.getDate());
-  const month = pad(now.getMonth() + 1);
-  const year = now.getFullYear();
-  const hours = pad(now.getHours());
-  const mins = pad(now.getMinutes());
-  const secs = pad(now.getSeconds());
-  return `${day}/${month}/${year} ${hours}:${mins}:${secs}`;
-}
-
-// ======================================================
-// PARTICIPANTES, ASIGNACIÓN DE TARGETS Y RETOS
-// ======================================================
-async function computeParticipants_() {
-  const sheetsClient = getSheetsClient();
-  const res = await sheetsClient.spreadsheets.values.get({
+// Helper para leer rangos
+async function readSheetRange(range) {
+  const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
-    range: 'PARTICIPANTES!A2:J',
+    range: range,
   });
-
-  const rows = res.data.values || [];
-  if (rows.length === 0) return [];
-
-  let allParticipants = [];
-  let targetsCol = [];
-  let retosAsignadosCol = [];
-  let changedTargets = false;
-  let changedRetos = false;
-
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const idVal = cellStr_(row[0]);
-    const nombreVal = cellStr_(row[2]);
-    const cedulaVal = cellStr_(row[3]);
-    const generoRaw = cellStr_(row[4]).toUpperCase();
-    const codigoVal = cellStr_(row[5]);
-    const targetsVal = cellStr_(row[6]);
-    const confirmadosVal = parseInt(cellStr_(row[7])) || 0;
-    const retosAsignadosVal = cellStr_(row[8]);
-    const retosCompletadosVal = cellStr_(row[9]);
-
-    let generoVal = "";
-    if (generoRaw === 'HOMBRE') generoVal = 'HOMBRE';
-    else if (generoRaw === 'MUJER') generoVal = 'MUJER';
-
-    let assignedArray = [];
-    if (targetsVal !== '') {
-      assignedArray = targetsVal.split(',').map(t => t.trim()).filter(t => t !== '');
-    }
-
-    let retosAsignadosArray = [];
-    if (retosAsignadosVal !== '') {
-      retosAsignadosArray = retosAsignadosVal.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
-    }
-
-    let retosCompletadosArray = [];
-    if (retosCompletadosVal !== '') {
-      retosCompletadosArray = retosCompletadosVal.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
-    }
-
-    targetsCol.push([targetsVal]);
-    retosAsignadosCol.push([retosAsignadosVal]);
-
-    if (idVal && nombreVal) {
-      allParticipants.push({
-        rowIndex: i + 2,
-        id: idVal,
-        nombre: nombreVal,
-        cedula: cedulaVal,
-        genero: generoVal,
-        codigoSorpresa: codigoVal,
-        assignedTargets: assignedArray,
-        bailesConfirmados: confirmadosVal,
-        retosAsignados: retosAsignadosArray,
-        retosCompletados: retosCompletadosArray
-      });
-    }
-  }
-
-  const hombres = allParticipants.filter(p => p.genero === 'HOMBRE');
-  const mujeres = allParticipants.filter(p => p.genero === 'MUJER');
-
-  allParticipants.forEach((user) => {
-    // 1. Asignación de Objetivos de Baile
-    if ((user.genero === 'HOMBRE' || user.genero === 'MUJER') && user.assignedTargets.length === 0) {
-      let pool = (user.genero === 'MUJER') ? hombres : mujeres;
-      pool = pool.filter(p => String(p.id) !== String(user.id));
-
-      if (pool.length > 0) {
-        let poolCopy = pool.slice();
-        let userSeed = 0;
-        for (let k = 0; k < user.id.length; k++) {
-          userSeed += user.id.charCodeAt(k);
-        }
-
-        for (let j = poolCopy.length - 1; j > 0; j--) {
-          let r = Math.floor(seedRandom(userSeed + j) * (j + 1));
-          let temp = poolCopy[j];
-          poolCopy[j] = poolCopy[r];
-          poolCopy[r] = temp;
-        }
-
-        user.assignedTargets = poolCopy.slice(0, 5).map(t => t.id);
-        targetsCol[user.rowIndex - 2] = [user.assignedTargets.join(',')];
-        changedTargets = true;
-      }
-    }
-
-    // 2. Asignación de Secuencia de 4 Retos Navideños
-    if (user.retosAsignados.length === 0) {
-      let userSeed = 0;
-      for (let k = 0; k < user.id.length; k++) {
-        userSeed += user.id.charCodeAt(k);
-      }
-
-      // Pista 1: Reto aleatorio entre 3 y 10
-      let poolGeneral = [3, 4, 5, 6, 7, 8, 9, 10];
-      let r1Index = Math.floor(seedRandom(userSeed + 1) * poolGeneral.length);
-      let r1 = poolGeneral[r1Index];
-      poolGeneral.splice(r1Index, 1);
-
-      // Pista 2: Obligatoriamente ID 1 (Anfitrión) o ID 2 (DJ)
-      let r2 = (seedRandom(userSeed + 2) > 0.5) ? 1 : 2;
-
-      // Pista 3: Reto aleatorio entre los restantes de 3 a 10
-      let r3Index = Math.floor(seedRandom(userSeed + 3) * poolGeneral.length);
-      let r3 = poolGeneral[r3Index];
-      poolGeneral.splice(r3Index, 1);
-
-      // Pista 4: Reto aleatorio entre los restantes de 3 a 10
-      let r4Index = Math.floor(seedRandom(userSeed + 4) * poolGeneral.length);
-      let r4 = poolGeneral[r4Index];
-
-      user.retosAsignados = [r1, r2, r3, r4];
-      retosAsignadosCol[user.rowIndex - 2] = [user.retosAsignados.join(',')];
-      changedRetos = true;
-    }
-  });
-
-  if (changedTargets) {
-    await sheetsClient.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `PARTICIPANTES!G2:G${rows.length + 1}`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: targetsCol },
-    });
-  }
-
-  if (changedRetos) {
-    await sheetsClient.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `PARTICIPANTES!I2:I${rows.length + 1}`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: retosAsignadosCol },
-    });
-  }
-
-  return allParticipants;
+  return res.data.values || [];
 }
 
+// Helper para escribir/actualizar celdas
+async function updateSheetRange(range, values) {
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: range,
+    valueInputOption: 'USER_ENTERED',
+    requestBody: { values },
+  });
+}
+
+// 1. Obtener lista de participantes
 async function getParticipants() {
-  return await computeParticipants_();
+  const rows = await readSheetRange('PARTICIPANTES!A2:J');
+  return rows.map((row) => ({
+    id: String(row[0] || '').trim(),
+    email: String(row[1] || '').trim(),
+    nombre: String(row[2] || '').trim(),
+    cedula: String(row[3] || '').trim(),
+    genero: String(row[4] || '').trim(),
+    codigoSorpresa: String(row[5] || '').trim(),
+    assignedTargets: String(row[6] || '').split(',').map(s => s.trim()).filter(Boolean),
+    bailesConfirmados: Number(row[7] || 0),
+    retosAsignados: String(row[8] || '').trim(),
+    retosCompletados: String(row[9] || '').trim()
+  })).filter(p => p.id !== '');
 }
 
-// ======================================================
-// RETOS NAVIDEÑOS Y MISTERIO DE LA PARTITURA
-// ======================================================
-const NARRATIVA_PISTAS = {
-  1: {
-    titulo: 'Pista 1: El Ritmo de los Renos',
-    historia: '❄️ El Grinch congeló la Navidad y escondió los 4 fragmentos de la partitura secreta del baile. 🎶 Saliste a la pista y recuperaste la 1ª nota musical. ¡El ritmo empieza a despertar! 📍 Sigue la primera pista en la sala para encontrar el mapa del segundo fragmento...'
-  },
-  2: {
-    titulo: 'Pista 2: La Chispa Navideña',
-    historia: '🎼 El Grinch bloqueó el sonido y dejó el 2º fragmento de la partitura bajo custodia de Staff. 👥 Conectaste con tus parejas objetivo y la música cobró fuerza. ⚡ Dirígete a la estación asignada para superar la prueba física y solicitar el código de desbloqueo.'
-  },
-  3: {
-    titulo: 'Pista 3: El Desierto del Grinch',
-    historia: '🧩 ¡El Grinch se acorrala! El calor de la pista está derritiendo su hechizo de hielo. 🎷 Has rescatado el 3er fragmento de la partitura secreta. Solo falta una nota para completar la canción. 🕵️‍♂️ Encuentra la siguiente ubicación en la sala y resuelve el acertijo final.'
-  },
-  4: {
-    titulo: 'Pista 4: La Estrella del Social',
-    historia: '🏆 ¡Salvaste el Social Navideño! Uniste los 4 fragmentos de la partitura y la música volvió a sonar a todo volumen. 🌟 Bailaste con tus 5 objetivos y superaste cada desafío en la pista. 🎁 ¡Presenta esta pantalla al Anfitrión y reclama tu premio de Navidad!'
-  }
-};
-
-async function readRetosSheet_() {
-  const sheetsClient = getSheetsClient();
-  const res = await sheetsClient.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: 'RETOS!A2:F',
-  });
-
-  const rows = res.data.values || [];
-  let retosMap = {};
-
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const idReto = parseInt(cellStr_(row[0]));
-    if (!isNaN(idReto)) {
-      retosMap[idReto] = {
-        rowIndex: i + 2,
-        id: idReto,
-        ubicacion: cellStr_(row[1]),
-        actividad: cellStr_(row[2]),
-        solucion: cellStr_(row[3]),
-        idsCompletados: cellStr_(row[4]),
-        tipoValidacion: cellStr_(row[5]).toUpperCase()
-      };
-    }
-  }
-
-  // Leer códigos maestros del staff exclusivamente de las celdas N2 (Anfitrión) y O2 (DJ)
-  let codigoAnfitrion = "";
-  let codigoDJ = "";
-
-  try {
-    const resStaff = await sheetsClient.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: 'RETOS!N2:O2',
-    });
-    if (resStaff.data.values && resStaff.data.values[0]) {
-      if (resStaff.data.values[0][0]) codigoAnfitrion = cellStr_(resStaff.data.values[0][0]);
-      if (resStaff.data.values[0][1]) codigoDJ = cellStr_(resStaff.data.values[0][1]);
-    }
-  } catch (err) {
-    console.error("Error al leer celdas N2:O2 de RETOS:", err);
-  }
-
-  return { retosMap, codigoAnfitrion, codigoDJ };
-}
-
-async function getChallengeData(userId) {
-  try {
-    const participants = await getParticipants();
-    const uidStr = String(userId).trim();
-    const user = participants.find(p => String(p.id).trim() === uidStr);
-
-    if (!user) {
-      throw new Error("Usuario no encontrado.");
-    }
-
-    const logs = await readLogs_();
-    const myUniqueDancesCount = user.bailesConfirmados || 0;
-
-    const assignedIds = user.assignedTargets || [];
-    let targetMatchedCount = 0;
-
-    assignedIds.forEach(targetId => {
-      const iReg = logs.some(l => String(l.idEmisor).trim() === uidStr && String(l.idReceptor).trim() === String(targetId).trim());
-      const targetReg = logs.some(l => String(l.idEmisor).trim() === String(targetId).trim() && String(l.idReceptor).trim() === uidStr);
-      if (iReg && targetReg) targetMatchedCount++;
-    });
-
-    const { retosMap } = await readRetosSheet_();
-
-    let tarjetas = [];
-
-    for (let pistaNum = 1; pistaNum <= 4; pistaNum++) {
-      let isUnlocked = false;
-      let reqTexto = "";
-
-      if (pistaNum === 1) {
-        isUnlocked = myUniqueDancesCount >= 5;
-        reqTexto = "Requiere haber registrado baile con al menos 5 personas.";
-      } else if (pistaNum === 2) {
-        isUnlocked = targetMatchedCount >= 2;
-        reqTexto = "Requiere confirmar al menos 2 de tus 5 Objetivos.";
-      } else if (pistaNum === 3) {
-        isUnlocked = targetMatchedCount >= 3;
-        reqTexto = "Requiere confirmar al menos 3 de tus 5 Objetivos.";
-      } else if (pistaNum === 4) {
-        isUnlocked = targetMatchedCount >= 5;
-        reqTexto = "Requiere haber confirmado a tus 5 Objetivos completos.";
-      }
-
-      const isCompleted = user.retosCompletados.includes(pistaNum);
-      const retoId = user.retosAsignados[pistaNum - 1] || (pistaNum === 2 ? 1 : 3);
-      
-      let retoInfo = retosMap[retoId];
-      if (!retoInfo) {
-        if (retoId === 1) {
-          retoInfo = { ubicacion: "Estación del Anfitrión", actividad: "Acércate al Anfitrión y supera su prueba física.", tipoValidacion: "STAFF_ANFITRION" };
-        } else if (retoId === 2) {
-          retoInfo = { ubicacion: "Estación del DJ", actividad: "Acércate al DJ y supera la prueba musical.", tipoValidacion: "STAFF_DJ" };
-        } else {
-          retoInfo = { ubicacion: "Ubicación Misteriosa", actividad: "Supera la prueba asignada.", tipoValidacion: "RESPUESTA" };
-        }
-      }
-
-      // Asegurar nombres de ubicación claros para Pista 2
-      if (pistaNum === 2) {
-        if (retoId === 1 || retoInfo.tipoValidacion === 'STAFF_ANFITRION') {
-          retoInfo.ubicacion = "Estación del Anfitrión";
-          retoInfo.tipoValidacion = "STAFF_ANFITRION";
-        } else {
-          retoInfo.ubicacion = "Estación del DJ";
-          retoInfo.tipoValidacion = "STAFF_DJ";
-        }
-      }
-
-      tarjetas.push({
-        pistaNumero: pistaNum,
-        titulo: NARRATIVA_PISTAS[pistaNum].titulo,
-        historia: NARRATIVA_PISTAS[pistaNum].historia,
-        unlocked: isUnlocked,
-        completed: isCompleted,
-        requisitoTexto: reqTexto,
-        retoId: retoId,
-        ubicacion: retoInfo.ubicacion,
-        actividad: retoInfo.actividad,
-        tipoValidacion: retoInfo.tipoValidacion
-      });
-    }
-
-    const allPistasCompleted = user.retosCompletados.length >= 4;
-    const allObjectivesMatched = targetMatchedCount >= 5;
-    const showGrandWinner = allPistasCompleted && allObjectivesMatched;
-
-    return {
-      userId: user.id,
-      nombre: user.nombre,
-      codigoSorpresa: user.codigoSorpresa,
-      targetMatchedCount,
-      totalObjectives: assignedIds.length,
-      myUniqueDancesCount,
-      tarjetas,
-      showGrandWinner
-    };
-  } catch (e) {
-    console.error("Error en getChallengeData:", e);
-    throw e;
+// Helper para actualizar los retos completados de un usuario (Columna J)
+async function updateParticipantCompletedChallenges(userId, completadosString) {
+  const rows = await readSheetRange('PARTICIPANTES!A2:A');
+  const rowIndex = rows.findIndex(r => String(r[0]).trim() === String(userId).trim());
+  if (rowIndex !== -1) {
+    const sheetRow = rowIndex + 2;
+    await updateSheetRange(`PARTICIPANTES!J${sheetRow}`, [[completadosString]]);
   }
 }
 
-async function validateChallenge(userId, pistaNumero, respuestaOcodigo) {
-  try {
-    const uidStr = String(userId).trim();
-    const pistaNum = parseInt(pistaNumero);
-    const inputVal = String(respuestaOcodigo || '').trim().toUpperCase();
-
-    if (isNaN(pistaNum) || pistaNum < 1 || pistaNum > 4) {
-      return { status: 'ERROR', message: 'Número de pista no válido.' };
-    }
-
-    const challengeData = await getChallengeData(uidStr);
-    const tarjeta = challengeData.tarjetas.find(t => t.pistaNumero === pistaNum);
-
-    if (!tarjeta) {
-      return { status: 'ERROR', message: 'Tarjeta de pista no encontrada.' };
-    }
-
-    if (!tarjeta.unlocked) {
-      return { status: 'ERROR', message: 'Esta pista aún está bloqueada.' };
-    }
-
-    if (tarjeta.completed) {
-      return { status: 'SUCCESS', message: '¡Pista ya completada previamente!' };
-    }
-
-    const { retosMap, codigoAnfitrion, codigoDJ } = await readRetosSheet_();
-    const retoInfo = retosMap[tarjeta.retoId];
-
-    let isValid = false;
-
-    // Validación según la estación asignada
-    if (tarjeta.tipoValidacion === 'STAFF_ANFITRION' || tarjeta.retoId === 1) {
-      if (!codigoAnfitrion) {
-        return { status: 'ERROR', message: 'Código de Anfitrión no configurado en la celda N2 de la hoja RETOS.' };
-      }
-      isValid = (inputVal === codigoAnfitrion.toUpperCase());
-    } else if (tarjeta.tipoValidacion === 'STAFF_DJ' || tarjeta.retoId === 2) {
-      if (!codigoDJ) {
-        return { status: 'ERROR', message: 'Código de DJ no configurado en la celda O2 de la hoja RETOS.' };
-      }
-      isValid = (inputVal === codigoDJ.toUpperCase());
-    } else {
-      const expectedSol = retoInfo ? String(retoInfo.solucion).trim().toUpperCase() : '';
-      isValid = (expectedSol !== '' && inputVal === expectedSol);
-    }
-
-    if (!isValid) {
-      return { status: 'ERROR', message: 'Código o respuesta incorrecta. Verifica con el Staff.' };
-    }
-
-    // Actualizar Google Sheets
-    const sheetsClient = getSheetsClient();
-    const participants = await getParticipants();
-    const user = participants.find(p => String(p.id).trim() === uidStr);
-
-    let newCompletados = user.retosCompletados.slice();
-    if (!newCompletados.includes(pistaNum)) {
-      newCompletados.push(pistaNum);
-      newCompletados.sort((a, b) => a - b);
-    }
-
-    // 1. Guardar nueva lista de pistas completadas en Columna J de PARTICIPANTES
-    await sheetsClient.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `PARTICIPANTES!J${user.rowIndex}`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: [[newCompletados.join(',')]] },
-    });
-
-    // 2. Registrar el ID del usuario en Columna E de la hoja RETOS
-    if (retoInfo) {
-      let currentIds = retoInfo.idsCompletados ? retoInfo.idsCompletados.split(',').map(s => s.trim()).filter(s => s !== '') : [];
-      if (!currentIds.includes(uidStr)) {
-        currentIds.push(uidStr);
-        await sheetsClient.spreadsheets.values.update({
-          spreadsheetId: SPREADSHEET_ID,
-          range: `RETOS!E${retoInfo.rowIndex}`,
-          valueInputOption: 'USER_ENTERED',
-          requestBody: { values: [[currentIds.join(', ')]] },
-        });
-      }
-    }
-
-    return { status: 'SUCCESS', message: '¡Pista completada con éxito!' };
-  } catch (e) {
-    console.error("Error en validateChallenge:", e);
-    return { status: 'ERROR', message: e.toString() };
+// Helper para actualizar los IDs completados en la pestaña RETOS (Columna E)
+async function updateChallengeCompletedUsers(challengeId, idsString) {
+  const rows = await readSheetRange('RETOS!A2:A');
+  const rowIndex = rows.findIndex(r => String(r[0]).trim() === String(challengeId).trim());
+  if (rowIndex !== -1) {
+    const sheetRow = rowIndex + 2;
+    await updateSheetRange(`RETOS!E${sheetRow}`, [[idsString]]);
   }
 }
 
-// ======================================================
-// REGISTROS DE BAILES Y NOTIFICACIONES
-// ======================================================
-async function readLogs_() {
-  const sheetsClient = getSheetsClient();
-  const res = await sheetsClient.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: 'REGISTROS!A2:D',
-  });
-
-  const rows = res.data.values || [];
-  let logs = [];
-
-  for (let i = 0; i < rows.length; i++) {
-    const emisor = cellStr_(rows[i][1]);
-    const receptor = cellStr_(rows[i][2]);
-    const msg = cellStr_(rows[i][3]);
-
-    if (emisor !== '' && receptor !== '') {
-      logs.push({
-        fecha: cellStr_(rows[i][0]),
-        idEmisor: emisor,
-        idReceptor: receptor,
-        mensaje: msg
-      });
-    }
-  }
-  return logs;
-}
-
+// 2. Leer Logs de Bailes
 async function getLogs() {
-  return await readLogs_();
+  const rows = await readSheetRange('LOGS!A2:D');
+  return rows.map((row) => ({
+    idEmisor: String(row[0] || '').trim(),
+    idReceptor: String(row[1] || '').trim(),
+    mensaje: String(row[2] || '').trim(),
+    fecha: String(row[3] || '').trim()
+  })).filter(l => l.idEmisor !== '');
 }
 
-async function updateConfirmedDancesFast_(specificIds) {
-  const sheetsClient = getSheetsClient();
-  const resPart = await sheetsClient.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: 'PARTICIPANTES!A2:H',
-  });
-
-  const partRows = resPart.data.values || [];
-  if (partRows.length === 0) return;
-
-  const logs = await readLogs_();
-  let outgoingMap = {};
-
-  logs.forEach((l) => {
-    if (!outgoingMap[l.idEmisor]) outgoingMap[l.idEmisor] = {};
-    outgoingMap[l.idEmisor][l.idReceptor] = true;
-  });
-
-  let targetIdsMap = null;
-  if (specificIds && Array.isArray(specificIds)) {
-    targetIdsMap = {};
-    specificIds.forEach(id => { targetIdsMap[String(id).trim()] = true; });
-  }
-
-  let countsColH = [];
-  let needsUpdate = false;
-
-  for (let i = 0; i < partRows.length; i++) {
-    const myId = cellStr_(partRows[i][0]);
-    const currentVal = partRows[i][7] ? partRows[i][7] : 0;
-
-    if (targetIdsMap && !targetIdsMap[myId]) {
-      countsColH.push([currentVal]);
-      continue;
-    }
-
-    let confirmedUniqueCount = 0;
-
-    if (myId !== '' && outgoingMap[myId]) {
-      const myPartners = Object.keys(outgoingMap[myId]);
-
-      myPartners.forEach((partnerId) => {
-        if (outgoingMap[partnerId] && outgoingMap[partnerId][myId]) {
-          confirmedUniqueCount++;
-        }
-      });
-    }
-
-    countsColH.push([confirmedUniqueCount]);
-    needsUpdate = true;
-  }
-
-  if (needsUpdate) {
-    await sheetsClient.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `PARTICIPANTES!H2:H${partRows.length + 1}`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: countsColH },
-    });
-  }
-}
-
-async function sendPushNotification(receiverId, senderName, senderId, userMessage) {
-  if (!ONESIGNAL_REST_KEY) return;
-
-  let pushText = `${senderName} (${senderId}) solicita registrar un baile contigo. Ingresa su ID ${senderId} en la app para confirmar el baile.`;
-  if (userMessage) {
-    pushText += ` Te dejó este mensaje: "${userMessage}"`;
-  }
-
-  const payload = {
-    "app_id": ONESIGNAL_APP_ID,
-    "include_aliases": { "external_id": [String(receiverId).trim()] },
-    "target_channel": "push",
-    "headings": { "es": "💃 ¡Solicitud de Baile Recibida!" },
-    "contents": { "es": pushText }
-  };
-
-  try {
-    await fetch("https://onesignal.com/api/v1/notifications", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Basic ${ONESIGNAL_REST_KEY}`
-      },
-      body: JSON.stringify(payload)
-    });
-  } catch (e) {
-    console.error("Error enviando push:", e);
-  }
-}
-
+// 3. Registrar Baile
 async function registerDance(idEmisor, idReceptor, mensaje) {
-  const sheetsClient = getSheetsClient();
-  const logs = await readLogs_();
-  const emisorStr = String(idEmisor).trim();
-  const receptorStr = String(idReceptor).trim();
+  idEmisor = String(idEmisor).trim();
+  idReceptor = String(idReceptor).trim();
 
-  const previousPartnerLog = logs.find((l) => {
-    return String(l.idEmisor).trim() === receptorStr &&
-           String(l.idReceptor).trim() === emisorStr;
-  });
+  if (idEmisor === idReceptor) {
+    return { status: 'ERROR', message: 'No puedes registrar un baile contigo mismo.' };
+  }
 
-  const now = getFormattedNow();
+  const logs = await getLogs();
   
-  await sheetsClient.spreadsheets.values.append({
+  // Verificar si ya registró este baile previamente
+  const alreadyRegistered = logs.some(l => l.idEmisor === idEmisor && l.idReceptor === idReceptor);
+  if (alreadyRegistered) {
+    return { status: 'ERROR', message: 'Ya habías registrado un baile con esta persona.' };
+  }
+
+  // Registrar nuevo baile en LOGS
+  const now = new Date().toISOString();
+  await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
-    range: 'REGISTROS!A:D',
+    range: 'LOGS!A:D',
     valueInputOption: 'USER_ENTERED',
     requestBody: {
-      values: [[now, emisorStr, receptorStr, mensaje]]
+      values: [[idEmisor, idReceptor, mensaje, now]]
     }
   });
 
-  const matched = !!previousPartnerLog;
+  // Verificar si hay coincidencia mutua (Match)
+  const isMutual = logs.some(l => l.idEmisor === idReceptor && l.idReceptor === idEmisor);
 
-  if (matched) {
-    await updateConfirmedDancesFast_([emisorStr, receptorStr]);
+  return { status: 'SUCCESS', matched: isMutual };
+}
+
+// 4. Obtener datos de "El Misterio de la Partitura Navideña"
+async function getChallengeData(userId) {
+  userId = String(userId).trim();
+  const participants = await getParticipants();
+  const user = participants.find(p => String(p.id).trim() === userId);
+
+  if (!user) {
+    return { tarjetas: [], showGrandWinner: false };
+  }
+
+  const logs = await getLogs();
+
+  // Calcular bailes confirmados (coincidencias mutuas)
+  const myEmittedReceptors = new Set(logs.filter(l => l.idEmisor === userId).map(l => l.idReceptor));
+  const myReceivedSenders = new Set(logs.filter(l => l.idReceptor === userId).map(l => l.idEmisor));
+  
+  const confirmedMatches = [...myEmittedReceptors].filter(id => myReceivedSenders.has(id));
+
+  // Calcular cuántas de las 5 parejas objetivo asignadas se han completado
+  const targets = user.assignedTargets || [];
+  const matchedTargetsCount = targets.filter(tId => confirmedMatches.includes(String(tId).trim())).length;
+
+  // Cargar lista de retos desde la pestaña RETOS
+  const retosRows = await readSheetRange('RETOS!A2:F11');
+  const retosMap = {};
+  retosRows.forEach(r => {
+    retosMap[String(r[0]).trim()] = {
+      id: String(r[0] || '').trim(),
+      ubicacion: String(r[1] || '').trim(),
+      actividad: String(r[2] || '').trim(),
+      respuesta: String(r[3] || '').trim(),
+      tipoValidacion: String(r[5] || '').trim()
+    };
+  });
+
+  // Parsear retos asignados y completados del usuario
+  const retosAsignadosIds = String(user.retosAsignados || '').split(',').map(s => s.trim()).filter(Boolean);
+  const completadosPistas = String(user.retosCompletados || '').split(',').map(s => s.trim()).filter(Boolean);
+
+  // Micro-historias de los 4 capítulos
+  const historias = [
+    "❄️ El Grinch congeló la Navidad y escondió los 4 fragmentos de la partitura secreta del baile. 🎶 Saliste a la pista y recuperaste la 1ª nota musical.",
+    "🎼 El Grinch bloqueó el sonido y dejó el 2º fragmento de la partitura bajo custodia. 👥 Conectaste con tus parejas objetivo y la música cobró fuerza.",
+    "🧩 ¡El Grinch se acorrala! El calor de la pista está derritiendo su hechizo de hielo. 🎷 Has rescatado el 3er fragmento de la partitura secreta.",
+    "🏆 ¡Salvaste el Social Navideño! Uniste los 4 fragmentos de la partitura y la música volvió a sonar a todo volumen. 🌟 Superaste cada desafío en la pista."
+  ];
+
+  const titulos = [
+    "Capítulo 1: El Ritmo de los Renos",
+    "Capítulo 2: La Chispa Navideña",
+    "Capítulo 3: El Desierto del Grinch",
+    "Capítulo 4: La Estrella del Social"
+  ];
+
+  // Construir estado de las 4 Tarjetas de Pistas
+  const tarjetas = [1, 2, 3, 4].map((num) => {
+    let unlocked = false;
+    let requisitoTexto = "";
+
+    if (num === 1) {
+      unlocked = myEmittedReceptors.size >= 5;
+      requisitoTexto = "Baila con al menos 5 personas para desbloquear.";
+    } else if (num === 2) {
+      unlocked = matchedTargetsCount >= 2;
+      requisitoTexto = "Confirma a 2 de tus 5 Parejas Objetivo.";
+    } else if (num === 3) {
+      unlocked = matchedTargetsCount >= 3;
+      requisitoTexto = "Confirma a 3 de tus 5 Parejas Objetivo.";
+    } else if (num === 4) {
+      unlocked = matchedTargetsCount >= 5;
+      requisitoTexto = "Confirma a tus 5 Parejas Objetivo completas.";
+    }
+
+    const completed = completadosPistas.includes(String(num));
+    const challengeId = retosAsignadosIds[num - 1] || "1";
+    const retoInfo = retosMap[challengeId] || { ubicacion: 'Zona Social', actividad: 'Prueba Navideña', tipoValidacion: 'RESPUESTA' };
+
+    return {
+      pistaNumero: num,
+      titulo: titulos[num - 1],
+      historia: historias[num - 1],
+      unlocked,
+      completed,
+      requisitoTexto,
+      ubicacion: retoInfo.ubicacion,
+      actividad: retoInfo.actividad,
+      tipoValidacion: retoInfo.tipoValidacion,
+      retoId: challengeId
+    };
+  });
+
+  const showGrandWinner = (matchedTargetsCount >= 5) && (completadosPistas.length >= 4);
+
+  return {
+    tarjetas,
+    showGrandWinner,
+    codigoSorpresa: user.codigoSorpresa || "¡GANADOR!"
+  };
+}
+
+// 5. Validar Reto / Respuesta (Lógica con Columna D de RETOS)
+async function validateChallenge(userId, pistaNumero, respuestaOcodigo) {
+  pistaNumero = Number(pistaNumero);
+  respuestaOcodigo = String(respuestaOcodigo || '').trim();
+
+  if (!userId || !pistaNumero || !respuestaOcodigo) {
+    return { status: 'ERROR', message: 'Por favor ingresa la respuesta o el código.' };
   }
 
   const participants = await getParticipants();
-  const senderObj = participants.find(p => String(p.id).trim() === emisorStr);
-  const senderName = senderObj ? senderObj.nombre : "Bailarín " + idEmisor;
+  const user = participants.find(p => String(p.id).trim() === String(userId).trim());
 
-  await sendPushNotification(idReceptor, senderName, idEmisor, mensaje);
-
-  return { status: 'SUCCESS', matched: matched };
-}
-
-// ======================================================
-// ENCUESTAS Y VOTACIONES
-// ======================================================
-async function readPollOptions_() {
-  const sheetsClient = getSheetsClient();
-  const resO1 = await sheetsClient.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: 'ENCUESTA!O1',
-  });
-
-  const statusO1 = cellStr_(resO1.data.values ? resO1.data.values[0][0] : '').toUpperCase();
-  if (statusO1 !== "SI") {
-    return [];
+  if (!user) {
+    return { status: 'ERROR', message: 'Usuario no encontrado.' };
   }
 
-  const resData = await sheetsClient.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: 'ENCUESTA!A2:B',
-  });
+  const retosAsignados = String(user.retosAsignados || '').split(',').map(s => s.trim()).filter(Boolean);
+  const challengeId = retosAsignados[pistaNumero - 1];
 
-  const rows = resData.data.values || [];
-  let options = [];
-  for (let i = 0; i < rows.length; i++) {
-    const song = cellStr_(rows[i][0]);
-    let imageUrl = cellStr_(rows[i][1]);
-    if (imageUrl && !imageUrl.startsWith('http')) imageUrl = '';
-    if (song) {
-      options.push({ song: song, imageUrl: imageUrl });
-    }
+  if (!challengeId) {
+    return { status: 'ERROR', message: 'No se encontró un reto configurado para esta pista.' };
   }
-  return options;
+
+  // Leer filas de la pestaña RETOS
+  const retosData = await readSheetRange('RETOS!A2:F11');
+  const challengeRow = retosData.find(r => String(r[0]).trim() === String(challengeId).trim());
+
+  if (!challengeRow) {
+    return { status: 'ERROR', message: 'Detalles del reto no encontrados.' };
+  }
+
+  // La respuesta / código esperado está almacenado en la Columna D (Índice 3)
+  const expectedAnswer = String(challengeRow[3] || '').trim();
+
+  // Comparación que ignora mayúsculas y espacios
+  const isMatch = expectedAnswer.toLowerCase() === respuestaOcodigo.toLowerCase();
+
+  if (!isMatch) {
+    return { status: 'ERROR', message: 'Código o respuesta incorrecta. Revisa e inténtalo de nuevo.' };
+  }
+
+  // Marcar pista como completada en PARTICIPANTES (Columna J)
+  let completados = String(user.retosCompletados || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (!completados.includes(String(pistaNumero))) {
+    completados.push(String(pistaNumero));
+    completados.sort((a, b) => Number(a) - Number(b));
+    await updateParticipantCompletedChallenges(user.id, completados.join(','));
+  }
+
+  // Anidar ID de usuario en la Columna E de la pestaña RETOS
+  let idsCompletados = String(challengeRow[4] || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (!idsCompletados.includes(String(userId))) {
+    idsCompletados.push(String(userId));
+    await updateChallengeCompletedUsers(challengeId, idsCompletados.join(', '));
+  }
+
+  return {
+    status: 'SUCCESS',
+    message: '✨ ¡Respuesta correcta! Has rescatado este fragmento de la partitura.'
+  };
 }
 
-async function readVotes_() {
-  const sheetsClient = getSheetsClient();
-  const res = await sheetsClient.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: 'VOTOS!A2:C',
-  });
-
-  const rows = res.data.values || [];
-  let votes = [];
-  for (let i = 0; i < rows.length; i++) {
-    const uId = cellStr_(rows[i][1]);
-    const song = cellStr_(rows[i][2]);
-    if (uId && song) votes.push({ userId: uId, song: song });
-  }
-  return votes;
-}
-
+// 6. Cargar datos de Encuesta
 async function getPollData(userId) {
-  const options = await readPollOptions_();
-  if (!options || options.length === 0) {
-    return { options: [], counts: {}, totalVotes: 0, userVote: null, disabled: true };
-  }
+  const optionsRows = await readSheetRange('ENCUESTA_OPCIONES!A2:C');
+  const votesRows = await readSheetRange('ENCUESTA_VOTOS!A2:C');
 
-  const votes = await readVotes_();
-  const uid = String(userId).trim();
+  const options = optionsRows.map(r => ({
+    song: String(r[0] || '').trim(),
+    imageUrl: String(r[1] || '').trim()
+  })).filter(o => o.song !== '');
+
+  const counts = {};
   let userVote = null;
 
-  let counts = {};
-  options.forEach(opt => { counts[opt.song] = 0; });
-  votes.forEach(v => {
-    if (v.userId === uid) userVote = v.song;
-    if (counts.hasOwnProperty(v.song)) counts[v.song]++;
+  votesRows.forEach(r => {
+    const uId = String(r[0] || '').trim();
+    const song = String(r[1] || '').trim();
+
+    if (song) {
+      counts[song] = (counts[song] || 0) + 1;
+    }
+    if (uId === String(userId).trim()) {
+      userVote = song;
+    }
   });
 
-  return { options: options, counts: counts, totalVotes: votes.length, userVote: userVote, disabled: false };
+  return {
+    options,
+    counts,
+    userVote,
+    totalVotes: votesRows.length
+  };
 }
 
-async function submitVote(userId, song) {
-  const options = await readPollOptions_();
-  if (!options || options.length === 0) {
-    return { status: 'ERROR', message: 'La encuesta se encuentra deshabilitada en este momento.' };
+// 7. Registrar Voto de Encuesta
+async function submitVote(userId, selectedSong) {
+  userId = String(userId).trim();
+  selectedSong = String(selectedSong).trim();
+
+  const pollData = await getPollData(userId);
+  if (pollData.userVote) {
+    return { status: 'ERROR', message: 'Ya has registrado tu voto anteriormente.' };
   }
 
-  const uid = String(userId).trim();
-  const chosen = String(song).trim();
-
-  const valid = options.some(o => o.song === chosen);
-  if (!valid) {
-    return { status: 'ERROR', message: 'La opción elegida ya no está disponible.' };
-  }
-
-  const existingVotes = await readVotes_();
-  const already = existingVotes.some(v => v.userId === uid);
-  if (already) {
-    return { status: 'ERROR', message: 'Ya has emitido tu voto anteriormente.' };
-  }
-
-  const now = getFormattedNow();
-  const sheetsClient = getSheetsClient();
-
-  await sheetsClient.spreadsheets.values.append({
+  const now = new Date().toISOString();
+  await sheets.spreadsheets.values.append({
     spreadsheetId: SPREADSHEET_ID,
-    range: 'VOTOS!A:C',
+    range: 'ENCUESTA_VOTOS!A:C',
     valueInputOption: 'USER_ENTERED',
     requestBody: {
-      values: [[now, uid, chosen]]
+      values: [[userId, selectedSong, now]]
     }
   });
 
   return { status: 'SUCCESS' };
 }
 
-// ======================================================
-// ENTRADA GENERAL DE LA API
-// ======================================================
-const ACTIONS = {
-  getParticipants,
-  getLogs,
-  registerDance,
-  getPollData,
-  submitVote,
-  getChallengeData,
-  validateChallenge
-};
+// Handler de Peticiones Vercel Serverless
+module.exports = async (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
 
-app.all('*', async (req, res) => {
-  try {
-    const { action, args } = req.body || {};
-    if (!action) {
-      return res.json({ ok: true, data: 'API activa en Vercel/Node' });
-    }
-    const fn = ACTIONS[action];
-    if (!fn) throw new Error('Acción no válida: ' + action);
-
-    const data = await fn.apply(null, args || []);
-    res.json({ ok: true, data: data });
-  } catch (err) {
-    console.error("Error en handler de API:", err);
-    res.status(200).json({ ok: false, error: String(err.message || err) });
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
   }
-});
 
-module.exports = app;
+  try {
+    const { action, args = [] } = req.body || {};
+
+    if (action === 'getParticipants') {
+      const data = await getParticipants();
+      return res.status(200).json({ ok: true, data });
+    }
+    if (action === 'getLogs') {
+      const data = await getLogs();
+      return res.status(200).json({ ok: true, data });
+    }
+    if (action === 'registerDance') {
+      const data = await registerDance(args[0], args[1], args[2]);
+      return res.status(200).json({ ok: true, data });
+    }
+    if (action === 'getChallengeData') {
+      const data = await getChallengeData(args[0]);
+      return res.status(200).json({ ok: true, data });
+    }
+    if (action === 'validateChallenge') {
+      const data = await validateChallenge(args[0], args[1], args[2]);
+      return res.status(200).json({ ok: true, data });
+    }
+    if (action === 'getPollData') {
+      const data = await getPollData(args[0]);
+      return res.status(200).json({ ok: true, data });
+    }
+    if (action === 'submitVote') {
+      const data = await submitVote(args[0], args[1]);
+      return res.status(200).json({ ok: true, data });
+    }
+
+    return res.status(400).json({ ok: false, error: 'Acción no válida' });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ ok: false, error: err.message });
+  }
+};
