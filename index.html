@@ -9,6 +9,9 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="dns-prefetch" href="https://cdn.onesignal.com">
 
+  <!-- TAILWIND CSS COMPATIBLE CON SAFARI Y ANDROID -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
   <!-- CLIENTE API -->
   <script>
     const API_URL = "/api";
@@ -70,7 +73,6 @@
     participantsPromise.catch(function() {});
   </script>
 
-  <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,600;0,700;0,800;1,600&display=swap" rel="stylesheet">
 
   <!-- SDK ONESIGNAL -->
@@ -88,6 +90,11 @@
   </script>
 
   <style>
+    /* Estilos de respaldo para asegurar que las secciones ocultas nunca se muestren juntas */
+    .hidden {
+      display: none !important;
+    }
+
     html { 
       -webkit-text-size-adjust: 100%; 
       text-size-adjust: 100%;
@@ -166,10 +173,10 @@
     </div>
   </div>
 
-  <!-- PANTALLA LOGIN SIN RECUADRO -->
+  <!-- PANTALLA LOGIN -->
   <div id="loginSection" class="w-full max-w-sm my-auto text-center shrink-0">
     
-    <!-- Imagen de Portada Límpida sin bordes ni sombras -->
+    <!-- Imagen de Portada Límpida -->
     <div class="mb-4 flex justify-center">
       <img src="portada.png" 
            alt="Portada Social Pa'l Desparche" 
@@ -177,7 +184,7 @@
            onerror="this.onerror=null; this.src='portada.jpg';">
     </div>
 
-    <!-- Formulario Limpio -->
+    <!-- Formulario -->
     <div class="space-y-4 text-left px-2">
       <div>
         <label class="block text-[11px] font-bold text-purple-950 mb-1.5 uppercase tracking-wider">Número de Cédula</label>
