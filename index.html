@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Social Pal Desparche 💃🕺 - El Misterio de la Partitura Navideña</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,14 +22,14 @@
       let lastErr;
 
       for (let i = 0; i < attempts; i++) {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 25000);
+        const ctrl = typeof AbortController === 'function' ? new AbortController() : null;
+        const timer = ctrl ? setTimeout(() => ctrl.abort(), 25000) : null;
         try {
           const res = await fetch(API_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action, args }),
-            signal: ctrl.signal
+            signal: ctrl ? ctrl.signal : undefined
           });
           const text = await res.text();
           let json;
@@ -155,12 +155,99 @@
       box-shadow: 0 0 0 4px rgba(126, 34, 206, 0.1);
     }
 
-    .pb-safe { 
-      padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); 
+
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 1rem 1rem 6rem;
+      padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+      padding-right: calc(1rem + env(safe-area-inset-right, 0px));
+      padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+      padding-left: calc(1rem + env(safe-area-inset-left, 0px));
+      overflow-wrap: anywhere;
+    }
+    #mainSection, #loginSection, .input-light { min-width: 0; width: 100%; }
+    #mainSection { max-width: 28rem; }
+    #loginSection { max-width: 24rem; }
+    #assignedList { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    #assignedList > p { grid-column: 1 / -1; }
+    #btnLogin { width: 100%; }
+    #bottomNav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 40;
+      background: #fff;
+      padding-left: calc(.5rem + env(safe-area-inset-left, 0px));
+      padding-right: calc(.5rem + env(safe-area-inset-right, 0px));
+    }
+    .pb-safe {
+      padding-bottom: .75rem;
+      padding-bottom: calc(.75rem + env(safe-area-inset-bottom, 0px));
+    }
+    #customModal { overflow-y: auto; padding-block: 1rem; }
+    #customModal > div { margin: auto; }
+    .responsive-row { flex-wrap: wrap; gap: .5rem; }
+    .responsive-row > * { min-width: 0; }
+    .pista-answer {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: .5rem;
+    }
+    .login-panel {
+      padding: 1rem 1rem 1.25rem;
+      border: 1px solid #f3e8ff;
+      border-radius: 1.5rem;
+      background: #fff;
+      box-shadow: 0 12px 35px rgba(76, 29, 149, .10);
+    }
+    .login-art {
+      margin-bottom: 1rem;
+      border-radius: 1rem;
+      background: radial-gradient(ellipse at 56% 65%, #fce7f3, #faf5ff 68%, #fff);
+      overflow: hidden;
+    }
+    .login-art img {
+      display: block;
+      width: 80%;
+      max-width: 235px;
+      height: auto;
+      margin: 0 auto;
+    }
+    .mystery-heading {
+      text-align: center;
+      padding: 0 .5rem .75rem;
+      border-radius: 1rem;
+      background: linear-gradient(#f3e8ff, #fdf4ff);
+    }
+    .mystery-art {
+      position: relative;
+      overflow: hidden;
+      height: 92px;
+      margin-bottom: .25rem;
+    }
+    .mystery-art img {
+      position: absolute;
+      top: -11px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: block;
+      width: 150px;
+      max-width: 100%;
+      height: auto;
+    }
+    @media (max-width: 420px) {
+      #mainSection .card-white { padding: 1rem; }
+      .pista-answer { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 350px) {
+      #assignedList { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      #assignedList > p { grid-column: 1 / -1; }
     }
   </style>
 </head>
-<body class="text-slate-800 min-h-screen min-h-[100svh] flex flex-col items-center justify-between p-4 pb-28 antialiased selection:bg-purple-500 selection:text-white">
+<body class="text-slate-800 min-h-screen min-h-[100svh] flex flex-col items-center justify-between antialiased selection:bg-purple-500 selection:text-white">
 
   <!-- MODAL DE AVISO -->
   <div id="customModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center p-4 hidden z-50">
@@ -174,14 +261,10 @@
   </div>
 
   <!-- PANTALLA LOGIN -->
-  <div id="loginSection" class="w-full max-w-sm my-auto text-center shrink-0">
+  <div id="loginSection" class="w-full max-w-sm my-auto text-center shrink-0 login-panel">
     
-    <!-- Imagen de Portada Límpida -->
-    <div class="mb-4 flex justify-center">
-      <img src="portada.png" 
-           alt="Portada Social Pa'l Desparche" 
-           class="w-full max-w-[280px] h-auto object-contain block mx-auto border-none outline-none shadow-none"
-           onerror="this.onerror=null; this.src='portada.jpg';">
+    <div class="login-art">
+      <img src="portada.png" alt="Social Pa'l Desparche" width="939" height="944">
     </div>
 
     <!-- Formulario -->
@@ -208,7 +291,7 @@
     <div id="tabDanceContent" class="space-y-4">
 
       <div class="card-white p-6 rounded-3xl shadow-xl relative border border-purple-100">
-        <div class="flex justify-between items-center mb-4">
+        <div class="flex justify-between items-center mb-4 responsive-row">
           <div>
             <p class="text-[10px] font-bold text-purple-900/60 uppercase tracking-widest">Bailarín Activo</p>
             <h2 id="userName" class="text-lg font-black text-purple-950">---</h2>
@@ -229,8 +312,8 @@
             <div class="text-2xl font-black text-purple-800" id="totalDancedCount">0</div>
           </div>
           <div class="bg-rose-50 p-3.5 rounded-2xl border border-rose-100 text-center">
-            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Progreso 5 Objetivos</p>
-            <div class="text-2xl font-black text-rose-600" id="targetMatchedCount">0 / 5</div>
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Progreso 4 Objetivos</p>
+            <div class="text-2xl font-black text-rose-600" id="targetMatchedCount">0 / 4</div>
           </div>
         </div>
       </div>
@@ -265,22 +348,19 @@
 
       <!-- PAREJAS OBJETIVO -->
       <div class="card-white p-5 rounded-3xl shadow-xl border border-purple-100">
-        <h3 class="font-extrabold text-xs text-purple-950 uppercase tracking-wider mb-3 text-center sm:text-left">🎯 Tus 5 Parejas Objetivo (ID)</h3>
-        <div id="assignedList" class="grid grid-cols-5 gap-2">
-          <p class="text-slate-400 text-xs text-center py-2 font-medium col-span-5">Cargando asignaciones...</p>
+        <h3 class="font-extrabold text-xs text-purple-950 uppercase tracking-wider mb-3 text-center sm:text-left">🎯 Tus 4 Parejas Objetivo (ID)</h3>
+        <div id="assignedList" class="grid grid-cols-4 gap-2">
+          <p class="text-slate-400 text-xs text-center py-2 font-medium col-span-4">Cargando asignaciones...</p>
         </div>
       </div>
 
       <!-- SECCIÓN EL MISTERIO DE LA PARTITURA NAVIDEÑA -->
-      <div class="card-white p-6 rounded-3xl shadow-xl border border-purple-100 space-y-4 relative overflow-visible">
+      <div class="card-white p-6 rounded-3xl shadow-xl border border-purple-100 space-y-4">
         
-        <!-- Imagen del Grinch sobreelevada -->
-        <img src="grinch.png" 
-             alt="El Grinch Navideño" 
-             class="absolute -top-20 -right-4 w-44 sm:w-56 h-auto opacity-95 drop-shadow-2xl pointer-events-none z-20 hover:scale-105 transition-transform">
-
-        <!-- Cabecera con el título centrado -->
-        <div class="text-center pb-2 border-b border-purple-100 w-full">
+        <div class="mystery-heading">
+          <div class="mystery-art" aria-hidden="true">
+            <img src="grinch.png" alt="" width="780" height="971">
+          </div>
           <span class="text-2xl">🎼</span>
           <h3 class="font-black text-sm text-purple-950 uppercase tracking-wider mt-1">El Misterio de la Partitura Navideña</h3>
           <p class="text-[11px] text-slate-500 mt-0.5">Recupera los 4 fragmentos congelados para salvar el Social.</p>
@@ -291,7 +371,7 @@
           <span class="text-4xl">🏆🎁</span>
           <h2 class="text-lg font-black text-amber-950 uppercase tracking-tight">¡Salvaste el Social Navideño!</h2>
           <p class="text-xs text-amber-900 font-medium leading-relaxed">
-            Uniste los 4 fragmentos de la partitura secreta y completaste tus 5 Objetivos de Baile.
+            Uniste los 4 fragmentos de la partitura secreta y completaste tus 4 Objetivos de Baile.
           </p>
           <div class="bg-white/80 backdrop-blur p-4 rounded-2xl border border-amber-400">
             <span class="text-[10px] font-bold text-amber-800 uppercase tracking-widest block mb-1">Tu Código Sorpresa de Ganador</span>
@@ -344,7 +424,7 @@
   </div>
 
   <!-- BARRA INFERIOR -->
-  <nav id="bottomNav" class="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-200 p-2 pb-safe hidden z-40 shadow-lg">
+  <nav id="bottomNav" class="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-2 pb-safe hidden z-40 shadow-lg">
     <div class="max-w-md mx-auto grid grid-cols-2 gap-2">
       <button id="navBtnDance" onclick="switchTab('dance')" class="flex flex-col items-center justify-center py-2 rounded-2xl transition bg-purple-100 text-purple-900 font-bold active:scale-95">
         <span class="text-lg">💃</span>
@@ -500,12 +580,12 @@
         }
 
         // Parejas Objetivos
-        const assignedIds = currentUser.assignedTargets || [];
+        const assignedIds = (currentUser.assignedTargets || []).slice(0, 4);
         let targetMatchedCount = 0;
 
         const assignedListEl = document.getElementById('assignedList');
         if (assignedIds.length === 0) {
-          assignedListEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-2 font-medium col-span-5">No hay parejas asignadas.</p>';
+          assignedListEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-2 font-medium col-span-4">No hay parejas asignadas.</p>';
         } else {
           assignedListEl.innerHTML = assignedIds.map(targetId => {
             const iRegisteredTarget = logs.some(l => String(l.idEmisor).trim() === currentIdStr && String(l.idReceptor).trim() === String(targetId).trim());
@@ -539,7 +619,7 @@
           }).join('');
         }
 
-        document.getElementById('targetMatchedCount').innerText = `${targetMatchedCount} / ${assignedIds.length}`;
+        document.getElementById('targetMatchedCount').innerText = `${targetMatchedCount} / 4`;
 
         // Gran Ganador
         const grandWinnerEl = document.getElementById('grandWinnerCard');
@@ -610,6 +690,9 @@
 
     function renderPistas(tarjetas) {
       const container = document.getElementById('pistasContainer');
+      const signature = JSON.stringify(tarjetas);
+      if (container.dataset.pistas === signature) return;
+      container.dataset.pistas = signature;
       if (!tarjetas || tarjetas.length === 0) {
         container.innerHTML = '<p class="text-slate-400 text-xs text-center py-2 font-medium">No se encontraron pistas.</p>';
         return;
@@ -639,7 +722,7 @@
             <div class="space-y-2.5 mt-3 pt-3 border-t border-slate-100">
               <p class="text-[11px] font-extrabold text-purple-950">📍 Ubicación: <span class="text-purple-700 font-bold">${escapeHtml(t.ubicacion)}</span></p>
               <p class="text-xs text-slate-600 font-medium bg-purple-50/50 p-2.5 rounded-xl border border-purple-100">⚡ <b>Prueba:</b> ${escapeHtml(t.actividad)}</p>
-              <div class="flex gap-2">
+              <div class="pista-answer">
                 <input id="pistaInput_${t.pistaNumero}" type="text" placeholder="Ingresa la solución encontrada" class="w-full px-3.5 py-2.5 rounded-xl input-light text-xs font-semibold outline-none transition uppercase">
                 <button onclick="submitPista(${t.pistaNumero})" class="brand-gradient-btn text-white text-xs font-bold px-4 py-2.5 rounded-xl shrink-0 active:scale-95 shadow">
                   Enviar Respuesta 🧩
@@ -653,7 +736,7 @@
 
         return `
           <div class="p-4 rounded-2xl border ${borderClass} transition-all space-y-2">
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center responsive-row">
               <h4 class="font-extrabold text-xs text-purple-950 uppercase tracking-wider">${escapeHtml(t.titulo)}</h4>
               ${statusBadge}
             </div>
