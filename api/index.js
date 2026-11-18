@@ -99,7 +99,7 @@ async function computeParticipants_() {
 
     let assignedArray = [];
     if (targetsVal !== '') {
-      assignedArray = targetsVal.split(',').map(t => t.trim()).filter(t => t !== '');
+      assignedArray = targetsVal.split(',').map(t => t.trim()).filter(t => t !== '').slice(0, 4);
     }
 
     let retosAsignadosArray = [];
@@ -154,7 +154,7 @@ async function computeParticipants_() {
           poolCopy[r] = temp;
         }
 
-        user.assignedTargets = poolCopy.slice(0, 5).map(t => t.id);
+        user.assignedTargets = poolCopy.slice(0, 4).map(t => t.id);
         targetsCol[user.rowIndex - 2] = [user.assignedTargets.join(',')];
         changedTargets = true;
       }
@@ -234,7 +234,7 @@ const NARRATIVA_PISTAS = {
   },
   4: {
     titulo: 'Pista 4: La Estrella del Social',
-    historia: '🏆 ¡Salvaste el Social Navideño! Uniste los 4 fragmentos de la partitura y la música volvió a sonar a todo volumen. 🌟 Bailaste con tus 5 objetivos y superaste cada desafío en la pista. 🎁 ¡Presenta esta pantalla al Anfitrión y reclama tu premio de Navidad!'
+    historia: '🏆 ¡Salvaste el Social Navideño! Uniste los 4 fragmentos de la partitura y la música volvió a sonar a todo volumen. 🌟 Bailaste con tus 4 objetivos y superaste cada desafío en la pista. 🎁 ¡Presenta esta pantalla al Anfitrión y reclama tu premio de Navidad!'
   }
 };
 
@@ -295,7 +295,7 @@ async function getChallengeData(userId) {
     const logs = await readLogs_();
     const myUniqueDancesCount = user.bailesConfirmados || 0;
 
-    // Calcular cuántos de sus 5 Objetivos han sido confirmados mutuamente
+    // Calcular cuántos de sus 4 Objetivos han sido confirmados mutuamente
     const assignedIds = user.assignedTargets || [];
     let targetMatchedCount = 0;
 
@@ -318,13 +318,13 @@ async function getChallengeData(userId) {
         reqTexto = "Requiere haber registrado baile con al menos 5 personas.";
       } else if (pistaNum === 2) {
         isUnlocked = targetMatchedCount >= 2;
-        reqTexto = "Requiere confirmar al menos 2 de tus 5 Objetivos.";
+        reqTexto = "Requiere confirmar al menos 2 de tus 4 Objetivos.";
       } else if (pistaNum === 3) {
         isUnlocked = targetMatchedCount >= 3;
-        reqTexto = "Requiere confirmar al menos 3 de tus 5 Objetivos.";
+        reqTexto = "Requiere confirmar al menos 3 de tus 4 Objetivos.";
       } else if (pistaNum === 4) {
-        isUnlocked = targetMatchedCount >= 5;
-        reqTexto = "Requiere haber confirmado a tus 5 Objetivos completos.";
+        isUnlocked = targetMatchedCount >= 4;
+        reqTexto = "Requiere confirmar el baile con tus 4 parejas objetivo.";
       }
 
       const isCompleted = user.retosCompletados.includes(pistaNum);
@@ -350,7 +350,7 @@ async function getChallengeData(userId) {
     }
 
     const allPistasCompleted = user.retosCompletados.length >= 4;
-    const allObjectivesMatched = targetMatchedCount >= 5;
+    const allObjectivesMatched = targetMatchedCount >= 4;
     const showGrandWinner = allPistasCompleted && allObjectivesMatched;
 
     return {
