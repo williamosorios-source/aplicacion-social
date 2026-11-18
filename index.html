@@ -592,12 +592,18 @@
         }
 
         // Parejas Objetivos
-        const assignedIds = (currentUser.assignedTargets || []).slice(0, 4);
+        const assignedIds = challengeData.assignedTargets || [];
         let targetMatchedCount = 0;
 
         const assignedListEl = document.getElementById('assignedList');
         if (assignedIds.length === 0) {
-          assignedListEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-2 font-medium col-span-4">No hay parejas asignadas.</p>';
+          let waitingMessage = 'Tus IDs aparecerán cuando haya cuatro parejas disponibles.';
+          if (!challengeData.objectivesActive) {
+            waitingMessage = 'El reto de parejas aún no empieza. Ya puedes registrar tus bailes.';
+          } else if (!challengeData.present) {
+            waitingMessage = 'Tus IDs se asignarán después de confirmar tu asistencia.';
+          }
+          assignedListEl.innerHTML = '<p class="text-slate-400 text-xs text-center py-2 font-medium col-span-4">' + waitingMessage + '</p>';
         } else {
           assignedListEl.innerHTML = assignedIds.map(targetId => {
             const iRegisteredTarget = logs.some(l => String(l.idEmisor).trim() === currentIdStr && String(l.idReceptor).trim() === String(targetId).trim());
