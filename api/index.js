@@ -89,18 +89,19 @@ function isQuotaError(error) {
 
 async function computeParticipants_() {
   const sheetsClient = getSheetsClient();
-  const res = await sheetsClient.spreadsheets.values.get({
+  const res = await sheetsClient.spreadsheets.values.batchGet({
     spreadsheetId: SPREADSHEET_ID,
-    range: 'PARTICIPANTES!A2:J',
+    ranges: ['PARTICIPANTES!A2:K', 'PARTICIPANTES!Q2'],
   });
 
-  const rows = res.data.values || [];
+  const [participantsRange, startRange] = res.data.valueRanges;
+  const rows = participantsRange.values || [];
+  const objectivesActive = cellStr_(startRange.values?.[0]?.[0]).toUpperCase() === 'SI';
   if (rows.length === 0) return [];
 
   let allParticipants = [];
-  let targetsCol = [];
+  const targetUpdates = [];
   let retosAsignadosCol = [];
-  let changedTargets = false;
   let changedRetos = false;
 
   for (let i = 0; i < rows.length; i++) {
@@ -119,9 +120,11 @@ async function computeParticipants_() {
     if (generoRaw === 'HOMBRE') generoVal = 'HOMBRE';
     else if (generoRaw === 'MUJER') generoVal = 'MUJER';
 
+    const present = cellStr_(row[10]).toUpperCase() === 'SI';
     let assignedArray = [];
     if (targetsVal !== '') {
-      assignedArray = targetsVal.split(',').map(t => t.trim()).filter(t => t !== '').slice(0, 4);
+      assignedArray = targetsVal.split(',').map(t => t.trim()).filter(t => t !== '');
+      assignedArray = [...new Set(assignedArray)].slice(0, 4);
     }
 
     let retosAsignadosArray = [];
@@ -134,7 +137,6 @@ async function computeParticipants_() {
       retosCompletadosArray = retosCompletadosVal.split(',').map(r => parseInt(r.trim())).filter(r => !isNaN(r));
     }
 
-    targetsCol.push([targetsVal]);
     retosAsignadosCol.push([retosAsignadosVal]);
 
     if (idVal && nombreVal) {
@@ -145,7 +147,9 @@ async function computeParticipants_() {
         cedula: cedulaVal,
         genero: generoVal,
         codigoSorpresa: codigoVal,
-        assignedTargets: assignedArray,
+        present,
+        objectivesActive,
+        assignedTargets: objectivesActive && present ? assignedArray : [],
         bailesConfirmados: confirmadosVal,
         retosAsignados: retosAsignadosArray,
         retosCompletados: retosCompletadosArray
@@ -153,17 +157,17 @@ async function computeParticipants_() {
     }
   }
 
-  const hombres = allParticipants.filter(p => p.genero === 'HOMBRE');
-  const mujeres = allParticipants.filter(p => p.genero === 'MUJER');
+  const hombres = allParticipants.filter(p => p.present && p.genero === 'HOMBRE');
+  const mujeres = allParticipants.filter(p => p.present && p.genero === 'MUJER');
 
   allParticipants.forEach((user) => {
     // 1. Asignación de Objetivos de Baile
-    if ((user.genero === 'HOMBRE' || user.genero === 'MUJER') && user.assignedTargets.length === 0) {
-      let pool = (user.genero === 'MUJER') ? hombres : mujeres;
-      pool = pool.filter(p => String(p.id) !== String(user.id));
+    if (objectivesActive && user.present && user.genero && user.assignedTargets.length < 4) {
+      const pool = user.genero === 'MUJER' ? hombres : mujeres;
+      const poolCopy = [...new Set(pool.map(p => p.id))].filter(id => id !== user.id);
+      user.assignedTargets = [];
 
-      if (pool.length > 0) {
-        let poolCopy = pool.slice();
+      if (poolCopy.length >= 4) {
         let userSeed = 0;
         for (let k = 0; k < user.id.length; k++) {
           userSeed += user.id.charCodeAt(k);
@@ -176,9 +180,11 @@ async function computeParticipants_() {
           poolCopy[r] = temp;
         }
 
-        user.assignedTargets = poolCopy.slice(0, 4).map(t => t.id);
-        targetsCol[user.rowIndex - 2] = [user.assignedTargets.join(',')];
-        changedTargets = true;
+        user.assignedTargets = poolCopy.slice(0, 4);
+        targetUpdates.push({
+          range: `PARTICIPANTES!G${user.rowIndex}`,
+          values: [[user.assignedTargets.join(',')]]
+        });
       }
     }
 
@@ -213,12 +219,10 @@ async function computeParticipants_() {
     }
   });
 
-  if (changedTargets) {
-    await sheetsClient.spreadsheets.values.update({
+  if (targetUpdates.length) {
+    await sheetsClient.spreadsheets.values.batchUpdate({
       spreadsheetId: SPREADSHEET_ID,
-      range: `PARTICIPANTES!G2:G${rows.length + 1}`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: targetsCol },
+      requestBody: { valueInputOption: 'RAW', data: targetUpdates },
     });
   }
 
@@ -375,6 +379,9 @@ async function getChallengeData(userId, includeLogs = false) {
       codigoSorpresa: user.codigoSorpresa,
       targetMatchedCount,
       totalObjectives: assignedIds.length,
+      assignedTargets: assignedIds,
+      objectivesActive: user.objectivesActive,
+      present: user.present,
       myUniqueDancesCount,
       tarjetas,
       showGrandWinner,
