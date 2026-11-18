@@ -38,9 +38,15 @@
           } catch (_) {
             throw new Error('El servidor respondió algo inesperado.');
           }
+          if (res.status === 429) {
+            const error = new Error(json.error);
+            error.quotaExceeded = true;
+            throw error;
+          }
           if (!json.ok) throw new Error(json.error);
           return json.data;
         } catch (err) {
+          if (err.quotaExceeded) throw err;
           if (err.name === 'AbortError') lastErr = new Error('El servidor tardó demasiado en responder.');
           else if (err instanceof TypeError) lastErr = new Error('No hay conexión con el servidor (' + err.message + ').');
           else lastErr = err;
@@ -216,25 +222,31 @@
       margin: 0 auto;
     }
     .mystery-heading {
-      text-align: center;
-      padding: 0 .5rem .75rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 43%);
+      align-items: center;
+      gap: .25rem;
+      padding: .5rem .35rem .5rem .75rem;
       border-radius: 1rem;
-      background: linear-gradient(#f3e8ff, #fdf4ff);
+      background: linear-gradient(135deg, #f3e8ff, #fdf4ff);
     }
-    .mystery-art {
-      position: relative;
-      overflow: hidden;
-      height: 92px;
-      margin-bottom: .25rem;
+    .mystery-copy { min-width: 0; }
+    .mystery-art { position: relative; min-width: 0; }
+    .mystery-art::before {
+      content: "";
+      position: absolute;
+      top: 48%;
+      left: 2%;
+      right: 17%;
+      bottom: 9%;
+      border-top: 2px solid #e9d5ff;
+      border-radius: .4rem;
+      background: linear-gradient(#faf5ff, rgba(250, 245, 255, 0));
     }
     .mystery-art img {
-      position: absolute;
-      top: -11px;
-      left: 50%;
-      transform: translateX(-50%);
+      position: relative;
       display: block;
-      width: 150px;
-      max-width: 100%;
+      width: 100%;
       height: auto;
     }
     @media (max-width: 420px) {
@@ -358,12 +370,14 @@
       <div class="card-white p-6 rounded-3xl shadow-xl border border-purple-100 space-y-4">
         
         <div class="mystery-heading">
+          <div class="mystery-copy">
+            <span class="text-2xl">🎼</span>
+            <h3 class="font-black text-sm text-purple-950 uppercase tracking-wider mt-1">El Misterio de la Partitura Navideña</h3>
+            <p class="text-[11px] text-slate-500 mt-0.5">Recupera los 4 fragmentos congelados para salvar el Social.</p>
+          </div>
           <div class="mystery-art" aria-hidden="true">
             <img src="grinch.png" alt="" width="780" height="971">
           </div>
-          <span class="text-2xl">🎼</span>
-          <h3 class="font-black text-sm text-purple-950 uppercase tracking-wider mt-1">El Misterio de la Partitura Navideña</h3>
-          <p class="text-[11px] text-slate-500 mt-0.5">Recupera los 4 fragmentos congelados para salvar el Social.</p>
         </div>
 
         <!-- TARJETA GRAN GANADOR -->
@@ -443,6 +457,7 @@
     let isFirstLoad = true;
     let selectedSong = null;
     let refreshing = false;
+    let refreshAfter = 0;
     let pollLoading = false;
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -531,7 +546,7 @@
         refreshData();
 
         if (!autoRefreshInterval) {
-          autoRefreshInterval = setInterval(refreshData, 4000);
+          autoRefreshInterval = setInterval(refreshData, 20000 + Math.floor(Math.random() * 5000));
         }
       } else {
         document.getElementById('loginError').classList.remove('hidden');
@@ -545,21 +560,17 @@
     }
 
     function refreshData() {
-      if (!currentUser || refreshing || document.hidden) return;
+      if (!currentUser || refreshing || document.hidden || Date.now() < refreshAfter) return;
       refreshing = true;
 
-      Promise.all([
-        api('getLogs'),
-        api('getChallengeData', currentUser.id)
-      ]).then(function([logs, challengeData]) {
-        logs = logs || [];
+      api('getChallengeData', currentUser.id, true).then(function(challengeData) {
+        const logs = challengeData.logs || [];
         const currentIdStr = String(currentUser.id).trim();
 
         const receivedBadges = logs.filter(log => String(log.idReceptor).trim() === currentIdStr);
         const myDances = logs.filter(log => String(log.idEmisor).trim() === currentIdStr);
 
-        const updatedUser = participants.find(p => String(p.id).trim() === currentIdStr);
-        document.getElementById('totalDancedCount').innerText = updatedUser ? (updatedUser.bailesConfirmados || 0) : 0;
+        document.getElementById('totalDancedCount').innerText = challengeData.myUniqueDancesCount;
 
         if (isFirstLoad) {
           knownReceivedCount = receivedBadges.length;
@@ -682,6 +693,7 @@
           }).reverse().join('');
         }
       }).catch(function(e) {
+        if (e.quotaExceeded) refreshAfter = Date.now() + 60000 + Math.floor(Math.random() * 10000);
         console.error(e);
       }).finally(function() {
         refreshing = false;
