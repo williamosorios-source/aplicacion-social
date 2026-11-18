@@ -65,6 +65,28 @@ function getFormattedNow() {
 // ======================================================
 // PARTICIPANTES, ASIGNACIÓN DE TARGETS Y RETOS
 // ======================================================
+const sheetReads = new Map();
+
+function cachedSheetRead(key, ttl, load) {
+  const entry = sheetReads.get(key);
+  if (entry && entry.expiresAt > Date.now()) return entry.promise;
+
+  const pending = { expiresAt: Infinity };
+  pending.promise = Promise.resolve().then(load).then(data => {
+    pending.expiresAt = Date.now() + ttl;
+    return data;
+  }).catch(error => {
+    if (sheetReads.get(key) === pending) sheetReads.delete(key);
+    throw error;
+  });
+  sheetReads.set(key, pending);
+  return pending.promise;
+}
+
+function isQuotaError(error) {
+  return Number(error.response?.status || error.code) === 429;
+}
+
 async function computeParticipants_() {
   const sheetsClient = getSheetsClient();
   const res = await sheetsClient.spreadsheets.values.get({
@@ -213,7 +235,7 @@ async function computeParticipants_() {
 }
 
 async function getParticipants() {
-  return await computeParticipants_();
+  return cachedSheetRead('participants', 30000, computeParticipants_);
 }
 
 // ======================================================
@@ -238,14 +260,19 @@ const NARRATIVA_PISTAS = {
   }
 };
 
-async function readRetosSheet_() {
+function readRetosSheet_() {
+  return cachedSheetRead('retos', 60000, loadRetosSheet_);
+}
+
+async function loadRetosSheet_() {
   const sheetsClient = getSheetsClient();
-  const res = await sheetsClient.spreadsheets.values.get({
+  const res = await sheetsClient.spreadsheets.values.batchGet({
     spreadsheetId: SPREADSHEET_ID,
-    range: 'RETOS!A2:F',
+    ranges: ['RETOS!A2:F', 'RETOS!N2:O2'],
   });
 
-  const rows = res.data.values || [];
+  const [retosRange, staffRange] = res.data.valueRanges;
+  const rows = retosRange.values || [];
   let retosMap = {};
 
   for (let i = 0; i < rows.length; i++) {
@@ -264,25 +291,14 @@ async function readRetosSheet_() {
     }
   }
 
-  // Leer códigos maestros del staff de Celdas N2 y O2
-  let codigoAnfitrion = "NAVIDAD2026";
-  let codigoDJ = "RITMO2026";
-
-  try {
-    const resStaff = await sheetsClient.spreadsheets.values.get({
-      spreadsheetId: SPREADSHEET_ID,
-      range: 'RETOS!N2:O2',
-    });
-    if (resStaff.data.values && resStaff.data.values[0]) {
-      if (resStaff.data.values[0][0]) codigoAnfitrion = cellStr_(resStaff.data.values[0][0]);
-      if (resStaff.data.values[0][1]) codigoDJ = cellStr_(resStaff.data.values[0][1]);
-    }
-  } catch (_) {}
+  const staff = staffRange.values?.[0] || [];
+  const codigoAnfitrion = cellStr_(staff[0]) || "NAVIDAD2026";
+  const codigoDJ = cellStr_(staff[1]) || "RITMO2026";
 
   return { retosMap, codigoAnfitrion, codigoDJ };
 }
 
-async function getChallengeData(userId) {
+async function getChallengeData(userId, includeLogs = false) {
   try {
     const participants = await getParticipants();
     const uidStr = String(userId).trim();
@@ -292,8 +308,8 @@ async function getChallengeData(userId) {
       throw new Error("Usuario no encontrado.");
     }
 
-    const logs = await readLogs_();
-    const myUniqueDancesCount = user.bailesConfirmados || 0;
+    const logs = await getLogs();
+    const myUniqueDancesCount = user.bailesConfirmados;
 
     // Calcular cuántos de sus 4 Objetivos han sido confirmados mutuamente
     const assignedIds = user.assignedTargets || [];
@@ -361,7 +377,8 @@ async function getChallengeData(userId) {
       totalObjectives: assignedIds.length,
       myUniqueDancesCount,
       tarjetas,
-      showGrandWinner
+      showGrandWinner,
+      ...(includeLogs ? { logs } : {})
     };
   } catch (e) {
     console.error("Error en getChallengeData:", e);
@@ -394,7 +411,7 @@ async function validateChallenge(userId, pistaNumero, respuestaOcodigo) {
       return { status: 'SUCCESS', message: '¡Pista ya completada previamente!' };
     }
 
-    const { retosMap, codigoAnfitrion, codigoDJ } = await readRetosSheet_();
+    const { retosMap, codigoAnfitrion, codigoDJ } = await loadRetosSheet_();
     const retoInfo = retosMap[tarjeta.retoId];
 
     let isValid = false;
@@ -415,7 +432,7 @@ async function validateChallenge(userId, pistaNumero, respuestaOcodigo) {
 
     // Actualizar Google Sheets
     const sheetsClient = getSheetsClient();
-    const participants = await getParticipants();
+    const participants = await computeParticipants_();
     const user = participants.find(p => String(p.id).trim() === uidStr);
 
     let newCompletados = user.retosCompletados.slice();
@@ -432,6 +449,8 @@ async function validateChallenge(userId, pistaNumero, respuestaOcodigo) {
       requestBody: { values: [[newCompletados.join(',')]] },
     });
 
+    sheetReads.delete('participants');
+
     // 2. Registrar anidadamente el ID del usuario en Columna E de RETOS
     if (retoInfo) {
       let currentIds = retoInfo.idsCompletados ? retoInfo.idsCompletados.split(',').map(s => s.trim()).filter(s => s !== '') : [];
@@ -443,6 +462,7 @@ async function validateChallenge(userId, pistaNumero, respuestaOcodigo) {
           valueInputOption: 'USER_ENTERED',
           requestBody: { values: [[currentIds.join(', ')]] },
         });
+        sheetReads.delete('retos');
       }
     }
 
@@ -484,69 +504,17 @@ async function readLogs_() {
 }
 
 async function getLogs() {
-  return await readLogs_();
+  return cachedSheetRead('logs', 10000, readLogs_);
 }
 
-async function updateConfirmedDancesFast_(specificIds) {
-  const sheetsClient = getSheetsClient();
-  const resPart = await sheetsClient.spreadsheets.values.get({
-    spreadsheetId: SPREADSHEET_ID,
-    range: 'PARTICIPANTES!A2:H',
-  });
-
-  const partRows = resPart.data.values || [];
-  if (partRows.length === 0) return;
-
-  const logs = await readLogs_();
-  let outgoingMap = {};
-
-  logs.forEach((l) => {
-    if (!outgoingMap[l.idEmisor]) outgoingMap[l.idEmisor] = {};
-    outgoingMap[l.idEmisor][l.idReceptor] = true;
-  });
-
-  let targetIdsMap = null;
-  if (specificIds && Array.isArray(specificIds)) {
-    targetIdsMap = {};
-    specificIds.forEach(id => { targetIdsMap[String(id).trim()] = true; });
+function countConfirmedDances(logs, userId) {
+  const incoming = new Set();
+  const outgoing = new Set();
+  for (const log of logs) {
+    if (log.idEmisor === userId) outgoing.add(log.idReceptor);
+    if (log.idReceptor === userId) incoming.add(log.idEmisor);
   }
-
-  let countsColH = [];
-  let needsUpdate = false;
-
-  for (let i = 0; i < partRows.length; i++) {
-    const myId = cellStr_(partRows[i][0]);
-    const currentVal = partRows[i][7] ? partRows[i][7] : 0;
-
-    if (targetIdsMap && !targetIdsMap[myId]) {
-      countsColH.push([currentVal]);
-      continue;
-    }
-
-    let confirmedUniqueCount = 0;
-
-    if (myId !== '' && outgoingMap[myId]) {
-      const myPartners = Object.keys(outgoingMap[myId]);
-
-      myPartners.forEach((partnerId) => {
-        if (outgoingMap[partnerId] && outgoingMap[partnerId][myId]) {
-          confirmedUniqueCount++;
-        }
-      });
-    }
-
-    countsColH.push([confirmedUniqueCount]);
-    needsUpdate = true;
-  }
-
-  if (needsUpdate) {
-    await sheetsClient.spreadsheets.values.update({
-      spreadsheetId: SPREADSHEET_ID,
-      range: `PARTICIPANTES!H2:H${partRows.length + 1}`,
-      valueInputOption: 'USER_ENTERED',
-      requestBody: { values: countsColH },
-    });
-  }
+  return [...outgoing].filter(partnerId => incoming.has(partnerId)).length;
 }
 
 async function sendPushNotification(receiverId, senderName, senderId, userMessage) {
@@ -581,7 +549,7 @@ async function sendPushNotification(receiverId, senderName, senderId, userMessag
 
 async function registerDance(idEmisor, idReceptor, mensaje) {
   const sheetsClient = getSheetsClient();
-  const logs = await readLogs_();
+  const [logs, participants] = await Promise.all([readLogs_(), getParticipants()]);
   const emisorStr = String(idEmisor).trim();
   const receptorStr = String(idReceptor).trim();
 
@@ -601,13 +569,31 @@ async function registerDance(idEmisor, idReceptor, mensaje) {
     }
   });
 
+  sheetReads.delete('logs');
   const matched = !!previousPartnerLog;
 
   if (matched) {
-    await updateConfirmedDancesFast_([emisorStr, receptorStr]);
+    const updatedLogs = [...logs, { idEmisor: emisorStr, idReceptor: receptorStr }];
+    const data = participants
+      .filter(p => p.id === emisorStr || p.id === receptorStr)
+      .map(p => ({
+        range: `PARTICIPANTES!H${p.rowIndex}`,
+        values: [[countConfirmedDances(updatedLogs, p.id)]]
+      }));
+
+    if (data.length) {
+      try {
+        await sheetsClient.spreadsheets.values.batchUpdate({
+          spreadsheetId: SPREADSHEET_ID,
+          requestBody: { valueInputOption: 'USER_ENTERED', data }
+        });
+        sheetReads.delete('participants');
+      } catch (error) {
+        console.error('El baile quedó registrado. Falló la actualización del contador:', error.message);
+      }
+    }
   }
 
-  const participants = await getParticipants();
   const senderObj = participants.find(p => String(p.id).trim() === emisorStr);
   const senderName = senderObj ? senderObj.nombre : "Bailarín " + idEmisor;
 
@@ -747,6 +733,12 @@ app.all('*', async (req, res) => {
     res.json({ ok: true, data: data });
   } catch (err) {
     console.error("Error en handler de API:", err);
+    if (isQuotaError(err)) {
+      return res.status(429).json({
+        ok: false,
+        error: 'El servicio de registro está ocupado. Espera un momento e inténtalo de nuevo.'
+      });
+    }
     res.status(200).json({ ok: false, error: String(err.message || err) });
   }
 });
